@@ -12,6 +12,17 @@ NEXA billing is designed as:
 
 A paid plan is activated only after the server verifies a successful Remita payment for the exact server-side amount.
 
+## Plan value and AI limits
+
+All tiers use the same high-quality Gemini AI model. NEXA does not intentionally make Basic responses lower quality; paid tiers differ by usage allowance and capability limits.
+
+- **3-Day Trial:** 25 AI requests, 10 voice requests, 3 active automations, 25 memories.
+- **Basic ₦1,000/month:** 150 AI requests/month, 75 voice requests/month, 20 active automations, 250 memories.
+- **Pro ₦3,000/month:** 750 AI requests/month, 300 voice requests/month, 100 active automations, 1,000 memories.
+- **Executive ₦5,000/month:** unlimited AI requests, unlimited voice requests, unlimited automations and unlimited memories.
+
+Executive is the only plan with unlimited AI assistant usage.
+
 ## Where the Remita API credentials go
 
 **Do not put Remita secrets in the Android app or GitHub source.**
@@ -34,13 +45,17 @@ The Android app calls NEXA's Supabase Edge Function; the Edge Function talks to 
 - Expired trials become `FREE / EXPIRED` and require the user to select a paid plan.
 - Subscription plan catalogue is stored in `subscription_plans`.
 - Server-side prices are ₦1,000, ₦3,000 and ₦5,000 per month.
+- Plan entitlements are stored server-side so the app cannot simply unlock Executive features by changing local UI state.
+- AI usage is counted server-side by month through `ai_usage_monthly`.
+- The `ai-gateway` now checks the user's subscription and consumes an AI allowance before processing a request.
+- Executive is the only plan that bypasses the monthly AI/voice usage caps.
 - `remita-webhook` records verified payment outcomes and activates the selected monthly plan.
 - Payment amount is checked against the authoritative server-side plan price.
 
 ## Production payment flow
 
 1. User opens Subscription.
-2. NEXA shows the 3-day trial or current paid plan.
+2. NEXA shows the trial and the complete feature/usage breakdown for each paid plan.
 3. User selects Basic, Pro, or Executive.
 4. Authenticated NEXA backend creates a Remita transaction for exactly the server-side price.
 5. User completes payment in the Remita payment experience.
