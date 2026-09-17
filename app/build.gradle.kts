@@ -25,6 +25,7 @@ dependencies {
     implementation(project(":feature:onboarding"))
     implementation(project(":feature:organizer"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:memory"))
     implementation(project(":feature:today"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)

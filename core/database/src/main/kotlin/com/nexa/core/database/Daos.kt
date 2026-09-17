@@ -38,6 +38,17 @@ interface MemoryDao {
     fun observeAll(): Flow<List<MemoryEntity>>
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: MemoryEntity)
+    // Memory Center actions (spec: memory must be explicitly approved, never
+    // silently promoted from SUGGESTED to ACTIVE). Each sets status + touches
+    // updatedAtEpochMs; approve also stamps consentedAtEpochMs.
+    @Query("UPDATE memories SET status = 'ACTIVE', consentedAtEpochMs = :nowEpochMs, updatedAtEpochMs = :nowEpochMs WHERE id = :id")
+    suspend fun approve(id: String, nowEpochMs: Long)
+    @Query("UPDATE memories SET status = 'REJECTED', updatedAtEpochMs = :nowEpochMs WHERE id = :id")
+    suspend fun reject(id: String, nowEpochMs: Long)
+    @Query("UPDATE memories SET content = :content, category = :category, updatedAtEpochMs = :nowEpochMs WHERE id = :id")
+    suspend fun edit(id: String, content: String, category: String, nowEpochMs: Long)
+    @Query("UPDATE memories SET deletedAtEpochMs = :nowEpochMs, updatedAtEpochMs = :nowEpochMs WHERE id = :id")
+    suspend fun softDelete(id: String, nowEpochMs: Long)
 }
 
 @Dao

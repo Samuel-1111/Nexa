@@ -1,11 +1,13 @@
 package com.nexa.app.di
 
 import com.nexa.core.database.NexaDatabase
+import com.nexa.data.LocalMemoryRepository
 import com.nexa.data.LocalNoteRepository
 import com.nexa.data.LocalReminderRepository
 import com.nexa.data.LocalTaskRepository
 import com.nexa.domain.CommandInterpreter
 import com.nexa.domain.DeterministicCommandInterpreter
+import com.nexa.domain.MemoryRepository
 import com.nexa.domain.NoteRepository
 import com.nexa.domain.ReminderRepository
 import com.nexa.domain.TaskRepository
@@ -35,6 +37,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideNoteRepository(db: NexaDatabase): NoteRepository = LocalNoteRepository(db)
+
+    @Provides
+    @Singleton
+    fun provideMemoryRepository(db: NexaDatabase): MemoryRepository = LocalMemoryRepository(db)
 
     @Provides
     @Singleton

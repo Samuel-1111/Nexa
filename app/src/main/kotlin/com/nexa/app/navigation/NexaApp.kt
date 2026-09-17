@@ -27,6 +27,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.nexa.feature.assistant.AssistantScreen
+import com.nexa.feature.memory.MemoryScreen
 import com.nexa.feature.onboarding.AuthScreen
 import com.nexa.feature.onboarding.AuthViewModel
 import com.nexa.feature.organizer.OrganizerScreen
@@ -72,7 +73,12 @@ private fun AuthenticatedApp() {
             composable(TopLevelDestination.Today.route) { TodayRoute() }
             composable(TopLevelDestination.Assistant.route) { AssistantScreen() }
             composable(TopLevelDestination.Organizer.route) { OrganizerScreen() }
-            composable(TopLevelDestination.Settings.route) { SettingsScreen() }
+            composable(TopLevelDestination.Settings.route) {
+                SettingsScreen(onOpenMemoryCenter = { navController.navigate("memory") })
+            }
+            // Reached from Settings, not a bottom-bar tab -- keeps the tab bar
+            // to the 4 primary destinations per the settings design intent.
+            composable("memory") { MemoryScreen() }
         }
     }
 }

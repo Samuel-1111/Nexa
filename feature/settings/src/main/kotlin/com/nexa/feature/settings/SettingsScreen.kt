@@ -92,7 +92,7 @@ private val plans = listOf(
 )
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(onOpenMemoryCenter: () -> Unit = {}) {
     var memoryEnabled by remember { mutableStateOf(true) }
     var voiceRepliesEnabled by remember { mutableStateOf(true) }
     var femaleVoice by remember { mutableStateOf(true) }
@@ -136,6 +136,21 @@ fun SettingsScreen() {
         }
 
         ToggleCard("Memory", "Allow NEXA to remember approved information.", memoryEnabled) { memoryEnabled = it }
+        Card(
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .42f)),
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(18.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Memory Center", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Review, edit or delete what NEXA remembers.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Button(onClick = onOpenMemoryCenter) { Text("Open") }
+            }
+        }
         ToggleCard("Voice replies", "Let NEXA speak responses through your phone speaker.", voiceRepliesEnabled) { voiceRepliesEnabled = it }
 
         Card(
