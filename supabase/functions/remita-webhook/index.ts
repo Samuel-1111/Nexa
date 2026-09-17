@@ -109,6 +109,24 @@ Deno.serve(async (req: Request) => {
     );
     if (subErr) return json({ error: subErr.message }, 500);
 
+    // A successful paid purchase starts a fresh allowance immediately.
+    // This supports repurchase when the user exhausts their allowance before
+    // the end of the current calendar month.
+    const currentPeriod = now.toISOString().slice(0, 7) + "-01";
+    const { error: usageErr } = await client
+      .from("ai_usage_monthly")
+      .upsert(
+        {
+          user_id: payload.userId,
+          period_start: currentPeriod,
+          request_count: 0,
+          voice_request_count: 0,
+          updated_at: now.toISOString(),
+        },
+        { onConflict: "user_id,period_start" },
+      );
+    if (usageErr) return json({ error: usageErr.message }, 500);
+
     await client.from("payments").update({ subscription_id: payment.id }).eq("id", payment.id);
   }
 
