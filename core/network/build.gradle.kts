@@ -1,0 +1,36 @@
+plugins {
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.serialization)
+}
+
+android {
+    namespace = "com.nexa.core.network"
+    compileSdk = 35
+    defaultConfig { minSdk = 26 }
+
+    // NEXA_SUPABASE_URL / NEXA_SUPABASE_ANON_KEY are read from local.properties
+    // (gitignored) or CI secrets, never hardcoded. The anon key is a PUBLIC key
+    // by Supabase's own design (safe to ship in a client, protected by RLS) --
+    // it is NOT the service-role key, which must never appear in this app.
+    val localProps = java.util.Properties().apply {
+        val f = rootProject.file("local.properties")
+        if (f.exists()) f.inputStream().use { load(it) }
+    }
+    defaultConfig {
+        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("NEXA_SUPABASE_URL", "")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("NEXA_SUPABASE_ANON_KEY", "")}\"")
+    }
+    buildFeatures { buildConfig = true }
+}
+
+dependencies {
+    implementation(project(":core:model"))
+    // api: SupabaseClient/HttpClient types appear in this module's own public
+    // constructors (AuthRepository, AiGatewayClient), so :app needs them too.
+    api(platform(libs.supabase.bom))
+    api("io.github.jan-tennert.supabase:postgrest-kt")
+    api("io.github.jan-tennert.supabase:auth-kt")
+    api(libs.ktor.client.android)
+    implementation(libs.kotlinx.serialization.json)
+}
