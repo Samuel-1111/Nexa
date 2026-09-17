@@ -1,11 +1,8 @@
 // NEXA -- Remita payment webhook.
 // verify_jwt is OFF because Remita calls this directly (it has no Supabase
-// session) -- authenticity is instead verified via Remita's own signature
-// scheme (hash of merchantId + apiKey + transactionId + ... per Remita docs).
-// CONFIGURATION REQUIRED before this is safe to receive real traffic:
-//   REMITA_MERCHANT_ID, REMITA_API_KEY, REMITA_WEBHOOK_SECRET (server-side only).
-// Until those are set, this function fails closed (503) rather than accepting
-// unverified payment confirmations.
+// session). Authenticity must be verified using the exact Remita signature
+// recipe for the merchant's enabled integration before production use.
+// Required server-side configuration: REMITA_MERCHANT_ID and REMITA_API_KEY.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { crypto } from "jsr:@std/crypto";
@@ -25,17 +22,17 @@ interface RemitaWebhookPayload {
   transactionId: string;
   rrr: string;
   amount: string;
-  status: string; // Remita's own status string, e.g. "00" = success
-  userId: string; // our Supabase auth user id, set when we initiated the payment
-  plan: string; // ESSENTIAL | PRO | EXECUTIVE
-  hash: string; // Remita signature over the payload
+  status: string;
+  userId: string;
+  plan: string;
+  hash: string;
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   if (!REMITA_MERCHANT_ID || !REMITA_API_KEY) {
-    return json({ error: "configuration_required", detail: "Remita credentials are not configured on this project yet." }, 503);
+    return json({ error: "configuration_required" }, 503);
   }
 
   let payload: RemitaWebhookPayload;
@@ -49,14 +46,16 @@ Deno.serve(async (req: Request) => {
     return json({ error: "invalid_signature" }, 401);
   }
 
-  if (!PLAN_PRICES_KOBO[payload.plan]) {
-    return json({ error: "invalid_plan" }, 400);
+  const expectedAmountKobo = PLAN_PRICES_KOBO[payload.plan];
+  if (!expectedAmountKobo) return json({ error: "invalid_plan" }, 400);
+
+  const receivedAmountKobo = Math.round(Number(payload.amount) * 100);
+  if (!Number.isFinite(receivedAmountKobo) || receivedAmountKobo !== expectedAmountKobo) {
+    return json({ error: "amount_mismatch" }, 400);
   }
 
   const client = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Idempotency: (provider, provider_transaction_id) is unique. A retried
-  // webhook for the same transaction is a no-op, not a double-activation.
   const { data: existing } = await client
     .from("payments")
     .select("id,status")
@@ -77,7 +76,7 @@ Deno.serve(async (req: Request) => {
         user_id: payload.userId,
         provider: "REMITA",
         provider_transaction_id: payload.transactionId,
-        amount_kobo: Math.round(parseFloat(payload.amount) * 100),
+        amount_kobo: receivedAmountKobo,
         status: isSuccess ? "SUCCESS" : "FAILED",
         raw_webhook_payload: payload,
       },
@@ -100,7 +99,7 @@ Deno.serve(async (req: Request) => {
         status: "ACTIVE",
         provider: "REMITA",
         provider_reference: payload.rrr,
-        price_kobo: PLAN_PRICES_KOBO[payload.plan],
+        price_kobo: expectedAmountKobo,
         current_period_start: now.toISOString(),
         current_period_end: periodEnd.toISOString(),
         next_billing_date: periodEnd.toISOString(),
@@ -117,11 +116,9 @@ Deno.serve(async (req: Request) => {
 });
 
 async function verifyRemitaSignature(payload: RemitaWebhookPayload): Promise<boolean> {
-  // Remita's actual hash recipe (fields/order) must be confirmed against the
-  // merchant docs for your integration type (Payment API vs Remita Retrieval
-  // Reference flow) -- this is a placeholder using the common
-  // sha512(apiKey + transactionId + rrr + merchantId + apiKey) shape until
-  // confirmed. Do NOT go live without checking this against the current docs.
+  // IMPORTANT: this recipe is intentionally isolated until the exact current
+  // Remita merchant integration docs are confirmed. Never go live using a
+  // guessed signature recipe.
   const material = `${REMITA_API_KEY}${payload.transactionId}${payload.rrr}${REMITA_MERCHANT_ID}${REMITA_API_KEY}`;
   const digest = await crypto.subtle.digest("SHA-512", new TextEncoder().encode(material));
   const computed = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
