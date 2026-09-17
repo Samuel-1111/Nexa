@@ -19,6 +19,8 @@ data class AiChatRequest(
     val audio_base64: String? = null,
     val audio_mime_type: String? = null,
     val speak: Boolean = false,
+    val voice_name: String = "Kore",
+    val speech_rate: Float = 1.12f,
 )
 
 @Serializable
@@ -27,14 +29,10 @@ data class AiChatResponse(
     val transcript: String? = null,
     val audio_base64: String? = null,
     val audio_mime_type: String? = null,
+    val tool_results: List<String> = emptyList(),
     val error: String? = null,
 )
 
-/**
- * Calls the authenticated ai-gateway. Gemini credentials never enter the
- * Android app. Voice audio is sent only for the duration of the request and
- * is not written to local storage by this client.
- */
 class AiGatewayClient(
     private val supabase: SupabaseClient,
     private val httpClient: HttpClient,
@@ -46,6 +44,7 @@ class AiGatewayClient(
         val response = httpClient.post(url) {
             header("Authorization", "Bearer $accessToken")
             contentType(ContentType.Application.Json)
+            if (request.audio_base64 != null) header("x-nexa-voice", "1")
             setBody(Json.encodeToString(AiChatRequest.serializer(), request))
         }
         return Json.decodeFromString(AiChatResponse.serializer(), response.bodyAsText())
@@ -59,12 +58,16 @@ class AiGatewayClient(
         mimeType: String = "audio/wav",
         chatId: String? = null,
         speak: Boolean = true,
+        voiceName: String = "Kore",
+        speechRate: Float = 1.12f,
     ): AiChatResponse = post(
         AiChatRequest(
             chat_id = chatId,
             audio_base64 = audioBase64,
             audio_mime_type = mimeType,
             speak = speak,
+            voice_name = voiceName,
+            speech_rate = speechRate,
         ),
     )
 }
