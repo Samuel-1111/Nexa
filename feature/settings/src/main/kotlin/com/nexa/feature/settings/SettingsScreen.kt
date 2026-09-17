@@ -62,13 +62,11 @@ fun SettingsScreen() {
                 Text("SUBSCRIPTION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 Text("3-day free trial", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
-                    "Your first 3 days are completely free. After the trial, choose a monthly NEXA plan.",
+                    "Your first 3 days are completely free. When the trial ends, choose a monthly plan to continue.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                plans.forEach { plan ->
-                    PlanRow(plan)
-                }
+                plans.forEach { plan -> PlanRow(plan) }
             }
         }
 
