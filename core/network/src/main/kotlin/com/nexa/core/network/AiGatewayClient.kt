@@ -10,6 +10,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.Json
 
 @Serializable
@@ -29,7 +30,7 @@ data class AiChatResponse(
     val transcript: String? = null,
     val audio_base64: String? = null,
     val audio_mime_type: String? = null,
-    val tool_results: List<String> = emptyList(),
+    val tool_results: List<JsonElement> = emptyList(),
     val error: String? = null,
 )
 
