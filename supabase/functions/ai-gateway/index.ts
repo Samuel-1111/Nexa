@@ -1,17 +1,15 @@
 // NEXA AI Gateway
-// Android NEVER holds a Gemini key. It calls this function with its Supabase
-// session JWT (verify_jwt=true means Supabase already rejected unauthenticated
-// calls before this code runs). We re-derive the user id server-side from the
-// JWT via supabase-js -- we never trust a user id sent in the request body.
+// Android never holds a Gemini key. Authenticated requests carry the user's
+// Supabase session JWT. Voice audio is processed in-memory and is not stored.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-// ---- Explicit tool schema. Gemini can only ask for these, never arbitrary code/SQL. ----
 const TOOLS = [
   {
     functionDeclarations: [
@@ -52,7 +50,7 @@ const TOOLS = [
       },
       {
         name: "suggest_memory",
-        description: "Suggest something worth remembering long-term. This NEVER saves directly -- it only creates a SUGGESTED memory row the user must approve in the app.",
+        description: "Suggest something worth remembering long-term. Never activates memory without user approval.",
         parameters: {
           type: "OBJECT",
           properties: {
@@ -64,7 +62,7 @@ const TOOLS = [
       },
       {
         name: "query_today",
-        description: "Read the user's open tasks, upcoming reminders and today's calendar events. Read-only.",
+        description: "Read the user's open tasks and upcoming reminders. Read-only.",
         parameters: { type: "OBJECT", properties: {} },
       },
     ],
@@ -73,24 +71,19 @@ const TOOLS = [
 
 interface ChatRequestBody {
   chat_id?: string;
-  message: string;
+  message?: string;
+  audio_base64?: string;
+  audio_mime_type?: string;
+  speak?: boolean;
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method !== "POST") {
-    return json({ error: "method_not_allowed" }, 405);
-  }
-
-  if (!GEMINI_API_KEY) {
-    // Fail closed and say so clearly -- never silently fall back to something fake.
-    return json({ error: "configuration_required", detail: "GEMINI_API_KEY is not configured on this project." }, 503);
-  }
+  if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+  if (!GEMINI_API_KEY) return json({ error: "configuration_required" }, 503);
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) return json({ error: "unauthorized" }, 401);
 
-  // Client scoped to the caller's own JWT -> every query below is RLS-enforced
-  // as that specific user, not as service role. This is the authorization boundary.
   const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: authHeader } },
   });
@@ -99,29 +92,49 @@ Deno.serve(async (req: Request) => {
   const userId = userData.user.id;
 
   let body: ChatRequestBody;
-  try {
-    body = await req.json();
-  } catch {
-    return json({ error: "invalid_json" }, 400);
+  try { body = await req.json(); } catch { return json({ error: "invalid_json" }, 400); }
+
+  // Voice path: Gemini performs the transcription. Nothing is executed yet.
+  // NEXA shows the transcript first; only after user confirmation does the app
+  // send that transcript through the normal action path.
+  if (body.audio_base64) {
+    if (body.audio_base64.length > 15_000_000) return json({ error: "audio_too_large" }, 413);
+    const mimeType = body.audio_mime_type || "audio/wav";
+    const transcriptionPrompt = `Transcribe exactly what the user said. Return only the spoken words, with normal punctuation. Do not answer the user, do not execute an action, and do not add commentary.`;
+    const geminiResp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            role: "user",
+            parts: [
+              { text: transcriptionPrompt },
+              { inlineData: { mimeType, data: body.audio_base64 } },
+            ],
+          }],
+        }),
+      },
+    );
+    if (!geminiResp.ok) return json({ error: "transcription_unavailable" }, 502);
+    const result = await geminiResp.json();
+    const transcript = result.candidates?.[0]?.content?.parts?.map((p: any) => p.text ?? "").join("").trim() ?? "";
+    if (!transcript) return json({ error: "empty_transcript" }, 422);
+    return json({ transcript });
   }
+
   if (!body.message || typeof body.message !== "string" || body.message.length > 4000) {
     return json({ error: "invalid_message" }, 400);
   }
 
-  // Service-role client used ONLY for writes we perform on the user's behalf
-  // after we ourselves derived userId from their verified JWT above.
   const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-  // Minimal context: today's open tasks + upcoming reminders only. Never the
-  // whole database, never unrelated users' data (impossible anyway: filtered by owner_id).
   const [{ data: tasks }, { data: reminders }] = await Promise.all([
     serviceClient.from("tasks").select("title,priority,due_at").eq("owner_id", userId).eq("status", "OPEN").is("deleted_at", null).limit(20),
     serviceClient.from("reminders").select("title,trigger_at").eq("owner_id", userId).is("deleted_at", null).order("trigger_at").limit(10),
   ]);
 
-  const systemInstruction = `You are NEXA, a personal assistant. Be concise and natural, never robotic. ` +
-    `Only call a tool when the user's request clearly maps to it. If a time is ambiguous, ask a short clarifying question instead of guessing. ` +
-    `Context -- open tasks: ${JSON.stringify(tasks ?? [])}. Upcoming reminders: ${JSON.stringify(reminders ?? [])}.`;
+  const systemInstruction = `You are NEXA, a fast personal assistant. Respond like a warm, intelligent human assistant, not a chatbot. Be concise, conversational and useful. Avoid robotic filler such as "Certainly", "Sure thing", "As an AI", or long explanations. Use the user's context when useful. Never claim an action happened unless the tool result confirms it. If a time is ambiguous, ask a short clarification instead of guessing. Context -- open tasks: ${JSON.stringify(tasks ?? [])}. Upcoming reminders: ${JSON.stringify(reminders ?? [])}.`;
 
   const geminiResp = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
@@ -135,14 +148,11 @@ Deno.serve(async (req: Request) => {
       }),
     },
   );
+  if (!geminiResp.ok) return json({ error: "ai_unavailable" }, 502);
 
-  if (!geminiResp.ok) {
-    return json({ error: "ai_unavailable" }, 502);
-  }
   const geminiJson = await geminiResp.json();
   const candidate = geminiJson.candidates?.[0];
   const parts = candidate?.content?.parts ?? [];
-
   const toolResults: Record<string, unknown>[] = [];
   let replyText = "";
 
@@ -154,52 +164,59 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  return json({ reply: replyText, tool_results: toolResults });
+  let audioBase64: string | undefined;
+  let audioMimeType: string | undefined;
+  if (body.speak && replyText.trim()) {
+    const audio = await synthesizeSpeech(replyText.trim());
+    audioBase64 = audio?.data;
+    audioMimeType = audio?.mimeType;
+  }
+
+  return json({ reply: replyText.trim(), tool_results: toolResults, audio_base64: audioBase64, audio_mime_type: audioMimeType });
 });
+
+async function synthesizeSpeech(text: string): Promise<{ data: string; mimeType: string } | null> {
+  const prompt = `Speak naturally and warmly as NEXA, a helpful personal assistant. Keep the delivery conversational, human, clear and fairly quick. Do not sound like an announcement or audiobook. Spoken transcript: ${text}`;
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TTS_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } },
+        },
+      }),
+    },
+  );
+  if (!response.ok) return null;
+  const result = await response.json();
+  const audioPart = result.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData?.data);
+  const data = audioPart?.inlineData?.data;
+  if (!data) return null;
+  return { data, mimeType: audioPart.inlineData.mimeType || "audio/pcm;rate=24000" };
+}
 
 // deno-lint-ignore no-explicit-any
 async function executeTool(client: any, userId: string, name: string, args: Record<string, unknown>) {
-  // Every branch scopes writes to owner_id = userId derived from the verified
-  // JWT above -- the model's output can request an action, never who it's for.
   switch (name) {
     case "create_task": {
-      const { data, error } = await client.from("tasks").insert({
-        owner_id: userId,
-        title: String(args.title ?? "").slice(0, 500),
-        priority: ["NONE", "LOW", "MEDIUM", "HIGH"].includes(String(args.priority)) ? args.priority : "NONE",
-        due_at: args.due_at ?? null,
-      }).select().single();
+      const { data, error } = await client.from("tasks").insert({ owner_id: userId, title: String(args.title ?? "").slice(0, 500), priority: ["NONE", "LOW", "MEDIUM", "HIGH"].includes(String(args.priority)) ? args.priority : "NONE", due_at: args.due_at ?? null }).select().single();
       return error ? { error: error.message } : { created: data };
     }
     case "create_reminder": {
       if (!args.trigger_at || !args.timezone) return { error: "missing trigger_at or timezone" };
-      const { data, error } = await client.from("reminders").insert({
-        owner_id: userId,
-        title: String(args.title ?? "").slice(0, 500),
-        trigger_at: args.trigger_at,
-        timezone: args.timezone,
-      }).select().single();
+      const { data, error } = await client.from("reminders").insert({ owner_id: userId, title: String(args.title ?? "").slice(0, 500), trigger_at: args.trigger_at, timezone: args.timezone }).select().single();
       return error ? { error: error.message } : { created: data };
     }
     case "create_note": {
-      const { data, error } = await client.from("notes").insert({
-        owner_id: userId,
-        title: args.title ?? null,
-        body: String(args.body ?? "").slice(0, 8000),
-        source: "AI_GENERATED",
-      }).select().single();
+      const { data, error } = await client.from("notes").insert({ owner_id: userId, title: args.title ?? null, body: String(args.body ?? "").slice(0, 8000), source: "AI_GENERATED" }).select().single();
       return error ? { error: error.message } : { created: data };
     }
     case "suggest_memory": {
-      // Always lands as SUGGESTED -- the app must show "Save / Edit / Dismiss"
-      // before it ever becomes ACTIVE. The gateway never sets status=ACTIVE itself.
-      const { data, error } = await client.from("memories").insert({
-        owner_id: userId,
-        content: String(args.content ?? "").slice(0, 2000),
-        category: args.category ?? "OTHER",
-        status: "SUGGESTED",
-        source_type: "ai_chat",
-      }).select().single();
+      const { data, error } = await client.from("memories").insert({ owner_id: userId, content: String(args.content ?? "").slice(0, 2000), category: args.category ?? "OTHER", status: "SUGGESTED", source_type: "ai_chat" }).select().single();
       return error ? { error: error.message } : { suggested: data };
     }
     case "query_today": {
@@ -207,8 +224,7 @@ async function executeTool(client: any, userId: string, name: string, args: Reco
       const { data: r } = await client.from("reminders").select("title,trigger_at").eq("owner_id", userId).is("deleted_at", null).order("trigger_at").limit(10);
       return { tasks: t ?? [], reminders: r ?? [] };
     }
-    default:
-      return { error: "unknown_tool" };
+    default: return { error: "unknown_tool" };
   }
 }
 
