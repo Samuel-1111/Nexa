@@ -22,26 +22,63 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+private data class Plan(
+    val name: String,
+    val price: String,
+    val detail: String,
+)
+
+private val plans = listOf(
+    Plan("Basic", "₦1,000/month", "Essential NEXA personal assistant features."),
+    Plan("Pro", "₦3,000/month", "More advanced assistant and productivity features."),
+    Plan("Executive", "₦5,000/month", "Full NEXA experience for power users."),
+)
+
 @Composable
 fun SettingsScreen() {
     var memoryEnabled by remember { mutableStateOf(true) }
-    var automationsEnabled by remember { mutableStateOf(true) }
     var voiceRepliesEnabled by remember { mutableStateOf(true) }
     var femaleVoice by remember { mutableStateOf(true) }
     var speechRate by remember { mutableFloatStateOf(1.12f) }
 
-    Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(
+        Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text("Make NEXA work the way you want.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            "Make NEXA work the way you want.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         SettingsCard("Profile", "Samuel", "Your name is used for a more personal NEXA experience.")
-        SettingsCard("Subscription", "Free plan", "Manage your plan and future NEXA features.")
 
-        ToggleCard("Automations", "Let NEXA handle approved background actions automatically.", automationsEnabled) { automationsEnabled = it }
+        Card(
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .42f)),
+        ) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("SUBSCRIPTION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text("3-day free trial", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(
+                    "Your first 3 days are completely free. After the trial, choose a monthly NEXA plan.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                plans.forEach { plan ->
+                    PlanRow(plan)
+                }
+            }
+        }
+
         ToggleCard("Memory", "Allow NEXA to remember approved information.", memoryEnabled) { memoryEnabled = it }
         ToggleCard("Voice replies", "Let NEXA speak responses through your phone speaker.", voiceRepliesEnabled) { voiceRepliesEnabled = it }
 
-        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .42f))) {
+        Card(
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .42f)),
+        ) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("VOICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 Text(if (femaleVoice) "Human female voice" else "Human male voice", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -58,6 +95,26 @@ fun SettingsScreen() {
         }
 
         SettingsCard("Privacy", "Permission-first", "NEXA should ask before using sensitive device capabilities.")
+    }
+}
+
+@Composable
+private fun PlanRow(plan: Plan) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(plan.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(plan.detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(plan.price, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
