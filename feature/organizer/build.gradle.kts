@@ -1,3 +1,12 @@
 plugins { alias(libs.plugins.android.library); alias(libs.plugins.kotlin.android); alias(libs.plugins.kotlin.compose); alias(libs.plugins.hilt) }
-android { namespace = "com.nexa.feature.organizer"; compileSdk = 35; defaultConfig { minSdk = 26 } }
-dependencies { implementation(project(":domain")); implementation(project(":core:designsystem")); implementation(libs.hilt.android); ksp(libs.hilt.compiler) }
+android { namespace = "com.nexa.feature.organizer"; compileSdk = 35; defaultConfig { minSdk = 26 }; buildFeatures { compose = true } }
+dependencies {
+    implementation(project(":domain"))
+    implementation(project(":core:designsystem"))
+    implementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.ui:ui")
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+}
