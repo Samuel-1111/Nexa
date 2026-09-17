@@ -8,21 +8,16 @@ import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/**
- * Single source of truth for the Supabase connection. Built once from
- * BuildConfig values populated at build time from local.properties (see
- * build.gradle.kts) -- never from a hardcoded string.
- *
- * CONFIGURATION REQUIRED: until NEXA_SUPABASE_URL / NEXA_SUPABASE_ANON_KEY are
- * present in local.properties, [SUPABASE_URL] is blank and every call here
- * will fail fast rather than silently hitting an empty host.
- */
+/** Single source of truth for the Supabase connection and Auth session. */
 fun buildSupabaseClient(): SupabaseClient = createSupabaseClient(
     supabaseUrl = BuildConfig.SUPABASE_URL,
     supabaseKey = BuildConfig.SUPABASE_ANON_KEY,
 ) {
     install(Postgrest)
-    install(Auth)
+    install(Auth) {
+        autoLoadFromStorage = true
+        alwaysAutoRefresh = true
+    }
 }
 
 class AuthRepository(private val client: SupabaseClient) {
@@ -30,7 +25,9 @@ class AuthRepository(private val client: SupabaseClient) {
         it is io.github.jan.supabase.auth.status.SessionStatus.Authenticated
     }
 
+    val sessionStatus = client.auth.sessionStatus
     val currentUserId: String? get() = client.auth.currentUserOrNull()?.id
+    val currentEmail: String? get() = client.auth.currentUserOrNull()?.email
 
     suspend fun signUpWithEmail(email: String, password: String) {
         client.auth.signUpWith(io.github.jan.supabase.auth.providers.builtin.Email) {
@@ -44,6 +41,14 @@ class AuthRepository(private val client: SupabaseClient) {
             this.email = email
             this.password = password
         }
+    }
+
+    suspend fun sendPasswordResetEmail(email: String) {
+        client.gotrue.sendRecoveryEmail(email = email)
+    }
+
+    suspend fun updatePassword(password: String) {
+        client.gotrue.modifyUser { this.password = password }
     }
 
     suspend fun signOut() = client.auth.signOut()
