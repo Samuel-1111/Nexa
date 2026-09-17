@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -25,13 +26,69 @@ import androidx.compose.ui.unit.dp
 private data class Plan(
     val name: String,
     val price: String,
-    val detail: String,
+    val tagline: String,
+    val aiLimit: String,
+    val voiceLimit: String,
+    val automationLimit: String,
+    val memoryLimit: String,
+    val features: List<String>,
 )
 
 private val plans = listOf(
-    Plan("Basic", "₦1,000/month", "Essential NEXA personal assistant features."),
-    Plan("Pro", "₦3,000/month", "More advanced assistant and productivity features."),
-    Plan("Executive", "₦5,000/month", "Full NEXA experience for power users."),
+    Plan(
+        name = "Basic",
+        price = "₦1,000/month",
+        tagline = "A strong everyday NEXA assistant without unlimited AI usage.",
+        aiLimit = "150 AI assistant requests/month",
+        voiceLimit = "75 voice requests/month",
+        automationLimit = "20 active automations",
+        memoryLimit = "Up to 250 saved memories",
+        features = listOf(
+            "High-quality Gemini AI assistance",
+            "Create and manage tasks, notes and reminders",
+            "Voice input and natural spoken replies",
+            "Background automations",
+            "Personal memory and context",
+            "Today daily planning",
+            "Cloud account sync",
+        ),
+    ),
+    Plan(
+        name = "Pro",
+        price = "₦3,000/month",
+        tagline = "For people who want NEXA working harder throughout the day.",
+        aiLimit = "750 AI assistant requests/month",
+        voiceLimit = "300 voice requests/month",
+        automationLimit = "100 active automations",
+        memoryLimit = "Up to 1,000 saved memories",
+        features = listOf(
+            "Everything in Basic",
+            "High-quality Gemini AI with a much higher usage allowance",
+            "Advanced recurring automations",
+            "Expanded memory and context",
+            "Advanced daily summaries",
+            "Premium voice experience",
+            "Priority-level assistant usage",
+        ),
+    ),
+    Plan(
+        name = "Executive",
+        price = "₦5,000/month",
+        tagline = "The complete NEXA experience for maximum assistant usage.",
+        aiLimit = "UNLIMITED AI assistant usage",
+        voiceLimit = "UNLIMITED voice requests",
+        automationLimit = "UNLIMITED active automations",
+        memoryLimit = "UNLIMITED saved memories",
+        features = listOf(
+            "Everything in Pro",
+            "Unlimited high-quality Gemini AI assistance",
+            "Unlimited voice assistant usage",
+            "Unlimited background automations",
+            "Unlimited personal memory",
+            "Maximum NEXA personalization",
+            "Highest usage allowance",
+        ),
+    ),
 )
 
 @Composable
@@ -40,6 +97,7 @@ fun SettingsScreen() {
     var voiceRepliesEnabled by remember { mutableStateOf(true) }
     var femaleVoice by remember { mutableStateOf(true) }
     var speechRate by remember { mutableFloatStateOf(1.12f) }
+    var selectedPlan by remember { mutableStateOf<String?>(null) }
 
     Column(
         Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
@@ -60,13 +118,20 @@ fun SettingsScreen() {
         ) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("SUBSCRIPTION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                Text("3-day free trial", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("Choose what NEXA should be able to do for you", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
-                    "Your first 3 days are completely free. When the trial ends, choose a monthly plan to continue.",
+                    "Your first 3 days are free. Review exactly what each plan includes before choosing a paid plan. Every tier uses the same high-quality AI model; the difference is how much you can use it and how much NEXA can do for you.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                plans.forEach { plan -> PlanRow(plan) }
+                TrialCard()
+                plans.forEach { plan ->
+                    PlanCard(
+                        plan = plan,
+                        selected = selectedPlan == plan.name,
+                        onSelect = { selectedPlan = plan.name },
+                    )
+                }
             }
         }
 
@@ -97,21 +162,50 @@ fun SettingsScreen() {
 }
 
 @Composable
-private fun PlanRow(plan: Plan) {
+private fun TrialCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(plan.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(plan.detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("3-DAY FREE TRIAL", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text("Try NEXA before paying", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("25 AI requests, 10 voice requests and up to 3 active automations during the trial.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun PlanCard(plan: Plan, selected: Boolean, onSelect: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column(Modifier.weight(1f)) {
+                    Text(plan.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(plan.tagline, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text(plan.price, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
-            Text(plan.price, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+
+            Text("WHAT YOU GET", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            plan.features.forEach { feature ->
+                Text("✓ $feature", style = MaterialTheme.typography.bodyMedium)
+            }
+
+            Text("USAGE & LIMITS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text("• ${plan.aiLimit}", style = MaterialTheme.typography.bodySmall)
+            Text("• ${plan.voiceLimit}", style = MaterialTheme.typography.bodySmall)
+            Text("• ${plan.automationLimit}", style = MaterialTheme.typography.bodySmall)
+            Text("• ${plan.memoryLimit}", style = MaterialTheme.typography.bodySmall)
+
+            Button(onClick = onSelect, modifier = Modifier.fillMaxWidth()) {
+                Text(if (selected) "${plan.name} selected" else "Choose ${plan.name}")
+            }
         }
     }
 }
