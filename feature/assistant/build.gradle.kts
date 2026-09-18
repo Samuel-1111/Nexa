@@ -1,4 +1,4 @@
-plugins { alias(libs.plugins.android.library); alias(libs.plugins.kotlin.android); alias(libs.plugins.kotlin.compose); alias(libs.plugins.hilt) }
+plugins { alias(libs.plugins.android.library); alias(libs.plugins.kotlin.android); alias(libs.plugins.kotlin.compose); alias(libs.plugins.ksp); alias(libs.plugins.hilt) }
 android { namespace = "com.nexa.feature.assistant"; compileSdk = 35; defaultConfig { minSdk = 26 }; buildFeatures { compose = true } }
 dependencies {
     implementation(project(":core:designsystem"))
@@ -7,4 +7,5 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.ui:ui")
     implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 }
