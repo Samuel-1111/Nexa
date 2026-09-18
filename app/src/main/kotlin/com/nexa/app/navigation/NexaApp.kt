@@ -15,6 +15,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,12 +46,13 @@ private enum class TopLevelDestination(val route: String, val label: String) {
 @Composable
 fun NexaApp() {
     val authViewModel: AuthViewModel = hiltViewModel()
-    val sessionStatus by authViewModel.sessionStatus.collectAsStateCompat(SessionStatus.LoadingFromStorage)
+    val sessionStatus by authViewModel.sessionStatus.collectAsState(initial = SessionStatus.Initializing)
 
     when (sessionStatus) {
         is SessionStatus.Authenticated -> AuthenticatedApp()
-        SessionStatus.LoadingFromStorage -> LoadingAuth()
-        SessionStatus.NetworkError, SessionStatus.NotAuthenticated -> AuthScreen(authViewModel)
+        SessionStatus.Initializing -> LoadingAuth()
+        is SessionStatus.RefreshFailure -> AuthScreen(authViewModel)
+        is SessionStatus.NotAuthenticated -> AuthScreen(authViewModel)
     }
 }
 
@@ -65,19 +67,11 @@ private fun LoadingAuth() {
 private fun AuthenticatedApp() {
     val navController = rememberNavController()
     Scaffold(bottomBar = { NexaBottomBar(navController) }) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = TopLevelDestination.Today.route,
-            modifier = Modifier.fillMaxSize().padding(padding),
-        ) {
+        NavHost(navController = navController, startDestination = TopLevelDestination.Today.route, modifier = Modifier.fillMaxSize().padding(padding)) {
             composable(TopLevelDestination.Today.route) { TodayRoute() }
             composable(TopLevelDestination.Assistant.route) { AssistantScreen() }
             composable(TopLevelDestination.Organizer.route) { OrganizerScreen() }
-            composable(TopLevelDestination.Settings.route) {
-                SettingsScreen(onOpenMemoryCenter = { navController.navigate("memory") })
-            }
-            // Reached from Settings, not a bottom-bar tab -- keeps the tab bar
-            // to the 4 primary destinations per the settings design intent.
+            composable(TopLevelDestination.Settings.route) { SettingsScreen(onOpenMemoryCenter = { navController.navigate("memory") }) }
             composable("memory") { MemoryScreen() }
         }
     }
@@ -93,26 +87,19 @@ private fun NexaBottomBar(navController: NavHostController) {
         TopLevelDestination.Organizer to Icons.Filled.CheckCircle,
         TopLevelDestination.Settings to Icons.Filled.Settings,
     )
-
     NavigationBar {
         TopLevelDestination.entries.forEach { destination ->
             val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
             NavigationBarItem(
                 selected = selected,
-                onClick = {
-                    navController.navigate(destination.route) {
-                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
+                onClick = { navController.navigate(destination.route) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                } },
                 icon = { Icon(icons.getValue(destination), contentDescription = destination.label) },
                 label = { Text(destination.label) },
             )
         }
     }
 }
-
-@Composable
-private fun <T> kotlinx.coroutines.flow.Flow<T>.collectAsStateCompat(initial: T) =
-    androidx.compose.runtime.collectAsState(initial = initial)
