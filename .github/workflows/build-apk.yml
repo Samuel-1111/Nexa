@@ -47,3 +47,5 @@ jobs:
           name: NEXA-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+# Cloud build uses the GitHub-hosted Android SDK.
