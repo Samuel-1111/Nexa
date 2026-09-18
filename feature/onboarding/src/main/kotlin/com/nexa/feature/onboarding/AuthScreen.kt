@@ -16,6 +16,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -36,8 +37,8 @@ fun AuthScreen(
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var confirmPassword by rememberSaveable { mutableStateOf("") }
-    val busy by viewModel.busy.collectAsStateCompat()
-    val message by viewModel.message.collectAsStateCompat()
+    val busy by viewModel.busy.collectAsState()
+    val message by viewModel.message.collectAsState()
 
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 40.dp),
@@ -128,7 +129,3 @@ fun AuthScreen(
         }
     }
 }
-
-@Composable
-private fun <T> kotlinx.coroutines.flow.StateFlow<T>.collectAsStateCompat() =
-    androidx.compose.runtime.collectAsState(initial = value)
