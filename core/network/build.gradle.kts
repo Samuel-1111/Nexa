@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -13,7 +15,7 @@ android {
     // (gitignored) or CI secrets, never hardcoded. The anon key is a PUBLIC key
     // by Supabase's own design (safe to ship in a client, protected by RLS) --
     // it is NOT the service-role key, which must never appear in this app.
-    val localProps = java.util.Properties().apply {
+    val localProps = Properties().apply {
         val f = rootProject.file("local.properties")
         if (f.exists()) f.inputStream().use { load(it) }
     }
