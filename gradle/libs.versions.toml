@@ -16,6 +16,7 @@ junit = "4.13.2"
 supabase = "3.1.4"
 ktor = "3.0.3"
 kotlinxSerialization = "1.7.3"
+kotlinxCoroutines = "1.9.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -36,6 +37,7 @@ junit = { module = "junit:junit", version.ref = "junit" }
 supabase-bom = { module = "io.github.jan-tennert.supabase:bom", version.ref = "supabase" }
 ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
