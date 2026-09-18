@@ -8,7 +8,6 @@ import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/** Single source of truth for the Supabase connection and Auth session. */
 fun buildSupabaseClient(): SupabaseClient = createSupabaseClient(
     supabaseUrl = BuildConfig.SUPABASE_URL,
     supabaseKey = BuildConfig.SUPABASE_ANON_KEY,
@@ -44,11 +43,11 @@ class AuthRepository(private val client: SupabaseClient) {
     }
 
     suspend fun sendPasswordResetEmail(email: String) {
-        client.gotrue.sendRecoveryEmail(email = email)
+        client.auth.resetPasswordForEmail(email)
     }
 
     suspend fun updatePassword(password: String) {
-        client.gotrue.modifyUser { this.password = password }
+        client.auth.updateUser { this.password = password }
     }
 
     suspend fun signOut() = client.auth.signOut()
