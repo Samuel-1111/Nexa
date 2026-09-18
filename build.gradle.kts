@@ -1,6 +1,6 @@
 import org.gradle.api.tasks.compile.JavaCompile
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     alias(libs.plugins.android.application) apply false
@@ -17,7 +17,7 @@ subprojects {
         sourceCompatibility = "17"
         targetCompatibility = "17"
     }
-    tasks.withType<KotlinCompilationTask<*>>().configureEach {
+    tasks.withType<KotlinCompile>().configureEach {
         compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
     }
 }
