@@ -4,6 +4,7 @@ android { namespace = "com.nexa.feature.memory"; compileSdk = 35; defaultConfig 
 
 dependencies {
     implementation(project(":domain"))
+    implementation(project(":core:common"))
     implementation(project(":core:model"))
     implementation(project(":core:designsystem"))
     implementation(libs.androidx.lifecycle.viewmodel.compose)
