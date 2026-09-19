@@ -21,6 +21,7 @@ import com.nexa.core.model.Priority
 @Composable
 fun TodayRoute(viewModel: TodayViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
+    val displayName by viewModel.displayName.collectAsState()
     Scaffold { padding ->
         when (state) {
             TodayUiState.Loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -43,7 +44,7 @@ fun TodayRoute(viewModel: TodayViewModel = hiltViewModel()) {
                         }
                         Spacer(Modifier.height(12.dp))
                         Text("Good morning,", style = MaterialTheme.typography.headlineMedium)
-                        Text("Samuel ☀️", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                        Text("$displayName ☀️", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                         Text(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")), color = NexaColors.OnSurfaceMuted)
                     }
                     item {
