@@ -16,15 +16,13 @@ class AssistantViewModel @Inject constructor(
 ) : ViewModel() {
     private val _reply = MutableStateFlow<String?>(null)
     val reply: StateFlow<String?> = _reply.asStateFlow()
-
     private val _transcript = MutableStateFlow<String?>(null)
     val transcript: StateFlow<String?> = _transcript.asStateFlow()
-
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
-
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+    private var chatId: String? = null
 
     fun ask(message: String) {
         val clean = message.trim()
@@ -33,10 +31,10 @@ class AssistantViewModel @Inject constructor(
             _busy.value = true
             _error.value = null
             try {
-                val result = aiGateway.sendMessage(clean)
-                if (!result.error.isNullOrBlank()) {
-                    _error.value = friendlyError(result.error)
-                } else {
+                val result = aiGateway.sendMessage(clean, chatId)
+                chatId = result.chat_id ?: chatId
+                if (!result.error.isNullOrBlank()) _error.value = friendlyError(result.error)
+                else {
                     _reply.value = result.reply.ifBlank { "I’m here. Tell me what you need." }
                     _transcript.value = null
                 }
@@ -53,20 +51,12 @@ class AssistantViewModel @Inject constructor(
             _busy.value = true
             _error.value = null
             try {
-                val result = aiGateway.sendVoice(
-                    audioBase64 = audioBase64,
-                    mimeType = mimeType,
-                    speak = false,
-                )
-                if (!result.error.isNullOrBlank()) {
-                    _error.value = friendlyError(result.error)
-                } else {
+                val result = aiGateway.sendVoice(audioBase64 = audioBase64, mimeType = mimeType, speak = false)
+                if (!result.error.isNullOrBlank()) _error.value = friendlyError(result.error)
+                else {
                     val text = result.transcript.orEmpty().trim()
-                    if (text.isBlank()) {
-                        _error.value = "I couldn’t hear that. Please try again."
-                    } else {
-                        _transcript.value = text
-                    }
+                    if (text.isBlank()) _error.value = "I couldn’t hear that. Please try again."
+                    else _transcript.value = text
                 }
             } catch (e: Exception) {
                 _error.value = friendlyError(e.message)
@@ -74,6 +64,13 @@ class AssistantViewModel @Inject constructor(
                 _busy.value = false
             }
         }
+    }
+
+    fun newChat() {
+        chatId = null
+        _reply.value = null
+        _transcript.value = null
+        _error.value = null
     }
 
     fun clearTranscript() { _transcript.value = null }
