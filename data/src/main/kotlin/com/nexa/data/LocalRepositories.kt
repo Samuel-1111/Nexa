@@ -105,7 +105,7 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             database.outboxDao().markDone(operation.id, System.currentTimeMillis())
                             continue
                         }
-                        supabase.from("tasks").upsert(kotlinx.serialization.json.buildJsonObject {
+                        supabase.postgrest.from("tasks").upsert(kotlinx.serialization.json.buildJsonObject {
                             put("id", entity.id)
                             put("owner_id", userId)
                             put("title", entity.title)
@@ -128,7 +128,7 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             database.outboxDao().markDone(operation.id, System.currentTimeMillis())
                             continue
                         }
-                        supabase.from("reminders").upsert(kotlinx.serialization.json.buildJsonObject {
+                        supabase.postgrest.from("reminders").upsert(kotlinx.serialization.json.buildJsonObject {
                             put("id", entity.id)
                             put("owner_id", userId)
                             entity.taskId?.let { put("task_id", it) }
@@ -150,7 +150,7 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             database.outboxDao().markDone(operation.id, System.currentTimeMillis())
                             continue
                         }
-                        supabase.from("notes").upsert(kotlinx.serialization.json.buildJsonObject {
+                        supabase.postgrest.from("notes").upsert(kotlinx.serialization.json.buildJsonObject {
                             put("id", entity.id)
                             put("owner_id", userId)
                             put("title", entity.title)
@@ -169,7 +169,7 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             database.outboxDao().markDone(operation.id, System.currentTimeMillis())
                             continue
                         }
-                        supabase.from("memories").upsert(kotlinx.serialization.json.buildJsonObject {
+                        supabase.postgrest.from("memories").upsert(kotlinx.serialization.json.buildJsonObject {
                             put("id", entity.id)
                             put("owner_id", userId)
                             put("content", entity.content)
