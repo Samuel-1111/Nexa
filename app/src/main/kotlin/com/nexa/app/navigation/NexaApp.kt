@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -66,9 +67,10 @@ fun NexaApp() {
         return
     }
 
-    if (otpEmail != null) {
+    val pendingOtpEmail = otpEmail
+    if (pendingOtpEmail != null) {
         OtpScreen(
-            email = otpEmail!!,
+            email = pendingOtpEmail,
             viewModel = authViewModel,
             onBack = { otpEmail = null },
         )
