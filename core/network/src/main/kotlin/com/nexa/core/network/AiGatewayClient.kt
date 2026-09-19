@@ -52,8 +52,8 @@ class AiGatewayClient(
         return Json.decodeFromString(AiChatResponse.serializer(), response.bodyAsText())
     }
 
-    suspend fun sendMessage(message: String, chatId: String? = null): AiChatResponse =
-        post(AiChatRequest(message = message, chat_id = chatId))
+    suspend fun sendMessage(message: String, chatId: String? = null, speak: Boolean = false): AiChatResponse =
+        post(AiChatRequest(message = message, chat_id = chatId, speak = speak))
 
     suspend fun sendVoice(
         audioBase64: String,
