@@ -30,34 +30,59 @@ import com.nexa.feature.today.TodayRoute
 import io.github.jan.supabase.auth.status.SessionStatus
 
 private enum class TopLevelDestination(val route: String, val label: String) {
-    Today("today", "Today"), Assistant("assistant", "Assistant"), Organizer("organizer", "Organizer"), Settings("settings", "Settings"),
+    Today("today", "Today"),
+    Assistant("assistant", "Assistant"),
+    Organizer("organizer", "Organizer"),
+    Settings("settings", "Settings"),
 }
 
 @Composable
 fun NexaApp() {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("nexa_launch", Context.MODE_PRIVATE) }
-    var landingVisible by remember { mutableStateOf(!prefs.getBoolean("landing_seen", false)) }
-    var authMode by remember { mutableStateOf<String?>(null) }
-    var otpEmail by remember { mutableStateOf<String?>(null) }
+    var landingVisible by rememberSaveable { mutableStateOf(!prefs.getBoolean("landing_seen", false)) }
+    var authMode by rememberSaveable { mutableStateOf<String?>(null) }
+    var otpEmail by rememberSaveable { mutableStateOf<String?>(null) }
+
     val authViewModel: AuthViewModel = hiltViewModel()
     val sessionStatus by authViewModel.sessionStatus.collectAsState(initial = SessionStatus.Initializing)
 
+    // The landing page is a one-time first-launch screen. Once the user chooses
+    // Create account or Log in, it is remembered and never shown again unless
+    // the app's local data is cleared.
     if (landingVisible) {
         LandingScreen(
-            onCreateAccount = { prefs.edit().putBoolean("landing_seen", true).apply(); landingVisible = false; authMode = "create" },
-            onLogin = { prefs.edit().putBoolean("landing_seen", true).apply(); landingVisible = false; authMode = "login" },
+            onCreateAccount = {
+                prefs.edit().putBoolean("landing_seen", true).apply()
+                landingVisible = false
+                authMode = "create"
+            },
+            onLogin = {
+                prefs.edit().putBoolean("landing_seen", true).apply()
+                landingVisible = false
+                authMode = "login"
+            },
         )
         return
     }
+
     if (otpEmail != null) {
-        OtpScreen(email = otpEmail!!, viewModel = authViewModel, onBack = { otpEmail = null })
+        OtpScreen(
+            email = otpEmail!!,
+            viewModel = authViewModel,
+            onBack = { otpEmail = null },
+        )
         return
     }
+
     when (sessionStatus) {
-        is SessionStatus.Authenticated -> { authMode = null; AuthenticatedApp() }
+        is SessionStatus.Authenticated -> {
+            authMode = null
+            AuthenticatedApp()
+        }
         SessionStatus.Initializing -> LoadingAuth()
-        is SessionStatus.RefreshFailure, is SessionStatus.NotAuthenticated -> AuthScreen(
+        is SessionStatus.RefreshFailure,
+        is SessionStatus.NotAuthenticated -> AuthScreen(
             initialCreateAccount = authMode == "create",
             viewModel = authViewModel,
             onOtpRequested = { otpEmail = it },
@@ -66,43 +91,103 @@ fun NexaApp() {
 }
 
 @Composable
-private fun LandingScreen(onCreateAccount: () -> Unit, onLogin: () -> Unit) {
+private fun LandingScreen(
+    onCreateAccount: () -> Unit,
+    onLogin: () -> Unit,
+) {
     Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).navigationBarsPadding().padding(24.dp),
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .systemBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Spacer(Modifier.height(1.dp))
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Spacer(Modifier.height(52.dp))
-            Text("NEXA", style = MaterialTheme.typography.displayLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+
+        Column(
+            Modifier.fillMaxWidth().widthIn(max = 560.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(44.dp))
+            Text(
+                "NEXA",
+                style = MaterialTheme.typography.displayLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+            )
             Spacer(Modifier.height(10.dp))
-            Text("Your Personal Assistant", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(
+                "Your Personal Assistant",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
             Spacer(Modifier.height(10.dp))
-            Text("Think it. Say it. NEXA helps you get it done.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            Text(
+                "Think it. Say it. NEXA helps you get it done.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
         }
-        Column(Modifier.fillMaxWidth().widthIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = onCreateAccount, Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(18.dp)) { Text("Create account", fontWeight = FontWeight.Bold) }
-            OutlinedButton(onClick = onLogin, Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(18.dp)) { Text("Log in", fontWeight = FontWeight.SemiBold) }
+
+        Column(
+            Modifier.fillMaxWidth().widthIn(max = 560.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Button(
+                onClick = onCreateAccount,
+                Modifier.fillMaxWidth().height(58.dp),
+                shape = RoundedCornerShape(18.dp),
+            ) {
+                Text("Create account", fontWeight = FontWeight.Bold)
+            }
+            OutlinedButton(
+                onClick = onLogin,
+                Modifier.fillMaxWidth().height(58.dp),
+                shape = RoundedCornerShape(18.dp),
+            ) {
+                Text("Log in", fontWeight = FontWeight.SemiBold)
+            }
         }
-        Text("Built by Olanlokun Samuel Ajibola • Samzy Technology", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+
+        Text(
+            "Built by Olanlokun Samuel Ajibola • Samzy Technology",
+            Modifier.fillMaxWidth().widthIn(max = 560.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
 @Composable
 private fun LoadingAuth() {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator()
+    }
 }
 
 @Composable
 private fun AuthenticatedApp() {
     val navController = rememberNavController()
-    Scaffold(bottomBar = { NexaBottomBar(navController) }) { padding ->
-        NavHost(navController, startDestination = TopLevelDestination.Today.route, modifier = Modifier.fillMaxSize().padding(padding)) {
+
+    Scaffold(
+        bottomBar = { NexaBottomBar(navController) },
+    ) { padding ->
+        NavHost(
+            navController,
+            startDestination = TopLevelDestination.Today.route,
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) {
             composable(TopLevelDestination.Today.route) { TodayRoute() }
             composable(TopLevelDestination.Assistant.route) { AssistantScreen() }
             composable(TopLevelDestination.Organizer.route) { OrganizerScreen() }
-            composable(TopLevelDestination.Settings.route) { SettingsScreen(onOpenMemoryCenter = { navController.navigate("memory") }) }
+            composable(TopLevelDestination.Settings.route) {
+                SettingsScreen(onOpenMemoryCenter = { navController.navigate("memory") })
+            }
             composable("memory") { MemoryScreen() }
         }
     }
@@ -111,12 +196,24 @@ private fun AuthenticatedApp() {
 @Composable
 private fun NexaBottomBar(navController: NavHostController) {
     val current = navController.currentBackStackEntryAsState().value?.destination
-    val icons = mapOf(TopLevelDestination.Today to Icons.Filled.Home, TopLevelDestination.Assistant to Icons.Filled.Chat, TopLevelDestination.Organizer to Icons.Filled.CheckCircle, TopLevelDestination.Settings to Icons.Filled.Settings)
+    val icons = mapOf(
+        TopLevelDestination.Today to Icons.Filled.Home,
+        TopLevelDestination.Assistant to Icons.Filled.Chat,
+        TopLevelDestination.Organizer to Icons.Filled.CheckCircle,
+        TopLevelDestination.Settings to Icons.Filled.Settings,
+    )
+
     NavigationBar {
         TopLevelDestination.entries.forEach { destination ->
             NavigationBarItem(
                 selected = current?.hierarchy?.any { it.route == destination.route } == true,
-                onClick = { navController.navigate(destination.route) { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                onClick = {
+                    navController.navigate(destination.route) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
                 icon = { Icon(icons.getValue(destination), destination.label) },
                 label = { Text(destination.label) },
             )
