@@ -1,5 +1,10 @@
 package com.nexa.feature.assistant
 
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioTrack
+import android.util.Base64
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexa.core.network.AiGatewayClient
@@ -31,12 +36,13 @@ class AssistantViewModel @Inject constructor(
             _busy.value = true
             _error.value = null
             try {
-                val result = aiGateway.sendMessage(clean, chatId)
+                val result = aiGateway.sendMessage(clean, chatId, speak = true)
                 chatId = result.chat_id ?: chatId
                 if (!result.error.isNullOrBlank()) _error.value = friendlyError(result.error)
                 else {
                     _reply.value = result.reply.ifBlank { "I’m here. Tell me what you need." }
                     _transcript.value = null
+                    result.audio_base64?.let { encoded -> viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { playPcm(encoded) } }
                 }
             } catch (e: Exception) {
                 _error.value = friendlyError(e.message)
@@ -63,6 +69,24 @@ class AssistantViewModel @Inject constructor(
             } finally {
                 _busy.value = false
             }
+        }
+    }
+
+    private fun playPcm(encoded: String) {
+        runCatching {
+            val bytes = Base64.decode(encoded, Base64.DEFAULT)
+            val min = AudioTrack.getMinBufferSize(24000, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
+            val track = AudioTrack.Builder()
+                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                .setAudioFormat(AudioFormat.Builder().setSampleRate(24000).setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
+                .setBufferSizeInBytes(maxOf(min, bytes.size))
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .build()
+            track.write(bytes, 0, bytes.size)
+            track.play()
+            Thread.sleep((bytes.size / 48L).coerceAtLeast(300L))
+            track.stop()
+            track.release()
         }
     }
 
