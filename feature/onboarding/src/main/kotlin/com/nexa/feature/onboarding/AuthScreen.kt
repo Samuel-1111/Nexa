@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
@@ -25,10 +24,7 @@ fun AuthScreen(
     onBack: () -> Unit = {},
 ) {
     var createAccount by rememberSaveable { mutableStateOf(initialCreateAccount) }
-    var resetPassword by rememberSaveable { mutableStateOf(false) }
     var email by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var confirmPassword by rememberSaveable { mutableStateOf("") }
     val busy by viewModel.busy.collectAsState()
     val message by viewModel.message.collectAsState()
 
@@ -53,21 +49,16 @@ fun AuthScreen(
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                when {
-                    resetPassword -> "Reset your password"
-                    createAccount -> "Create your account"
-                    else -> "Welcome back"
-                },
+                if (createAccount) "Create your account" else "Welcome back",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                when {
-                    resetPassword -> "We’ll help you get back into NEXA."
-                    createAccount -> "Create your NEXA account. We’ll send a 6-digit code to your email."
-                    else -> "Sign in and get back to your day."
-                },
+                if (createAccount)
+                    "Enter your email. We'll send you a 6-digit verification code."
+                else
+                    "Enter your email. We'll send you a secure one-time code.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -83,58 +74,20 @@ fun AuthScreen(
                 shape = RoundedCornerShape(16.dp),
             )
 
-            if (!resetPassword) {
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Password") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    shape = RoundedCornerShape(16.dp),
-                )
-
-                if (createAccount) {
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = confirmPassword,
-                        onValueChange = { confirmPassword = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Confirm password") },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        shape = RoundedCornerShape(16.dp),
-                    )
-                }
-            }
-
             Spacer(Modifier.height(18.dp))
             Button(
-                onClick = {
-                    when {
-                        resetPassword -> viewModel.sendPasswordReset(email)
-                        createAccount -> viewModel.signUp(email, password, confirmPassword, onOtpRequested)
-                        else -> viewModel.signIn(email, password)
-                    }
-                },
-                enabled = !busy && email.isNotBlank() && (resetPassword || password.isNotBlank()),
+                onClick = { viewModel.requestOtp(email, onOtpRequested) },
+                enabled = !busy && email.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(17.dp),
             ) {
                 if (busy) CircularProgressIndicator(strokeWidth = 2.dp)
                 else Text(
-                    when {
-                        resetPassword -> "Send reset instructions"
-                        createAccount -> "Create account"
-                        else -> "Log in"
-                    },
+                    if (createAccount) "Create account" else "Send code",
                     fontWeight = FontWeight.SemiBold,
                 )
             }
 
-            // Errors are deliberately reduced to one short, human-readable line.
-            // Raw Supabase/HTTP exception dumps are never rendered here.
             message?.let {
                 Spacer(Modifier.height(12.dp))
                 Surface(
@@ -153,32 +106,21 @@ fun AuthScreen(
             }
 
             Spacer(Modifier.height(8.dp))
-            if (!resetPassword && !createAccount) {
-                TextButton(onClick = { resetPassword = true; viewModel.clearMessage() }) {
-                    Text("Forgot password?")
-                }
-            }
-
             TextButton(
                 onClick = {
-                    resetPassword = false
                     createAccount = !createAccount
                     viewModel.clearMessage()
                 },
             ) {
-                Text(if (createAccount) "Already have an account? Log in" else "Create a NEXA account")
+                Text(
+                    if (createAccount)
+                        "Already have an account? Sign in"
+                    else
+                        "Create a NEXA account"
+                )
             }
 
-            if (resetPassword) {
-                OutlinedButton(
-                    onClick = { resetPassword = false; viewModel.clearMessage() },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Back to login")
-                }
-            } else {
-                TextButton(onClick = onBack) { Text("Back") }
-            }
+            TextButton(onClick = onBack) { Text("Back") }
         }
     }
 }
