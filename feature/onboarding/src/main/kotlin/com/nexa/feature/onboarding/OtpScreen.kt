@@ -19,6 +19,7 @@ fun OtpScreen(
     email: String,
     viewModel: AuthViewModel = hiltViewModel(),
     onBack: () -> Unit = {},
+    onVerified: () -> Unit = {},
 ) {
     var code by rememberSaveable { mutableStateOf("") }
     val busy by viewModel.busy.collectAsState()
@@ -66,7 +67,7 @@ fun OtpScreen(
             )
             Spacer(Modifier.height(16.dp))
             Button(
-                onClick = { viewModel.verifyOtp(email, code) {} },
+                onClick = { viewModel.verifyOtp(email, code, onVerified) },
                 enabled = !busy && code.length == 6,
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(17.dp),
