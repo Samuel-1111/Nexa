@@ -14,25 +14,46 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
-fun OtpScreen(email: String, viewModel: AuthViewModel = hiltViewModel(), onBack: () -> Unit = {}) {
+fun OtpScreen(
+    email: String,
+    viewModel: AuthViewModel = hiltViewModel(),
+    onBack: () -> Unit = {},
+) {
     var code by rememberSaveable { mutableStateOf("") }
     val busy by viewModel.busy.collectAsState()
     val message by viewModel.message.collectAsState()
 
     Column(
-        Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 28.dp),
+        Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+            .padding(horizontal = 22.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-        Column(Modifier.fillMaxWidth().widthIn(max = 520.dp)) {
+        Column(
+            Modifier.fillMaxWidth().widthIn(max = 520.dp),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Spacer(Modifier.height(80.dp))
+            Text(
+                "NEXA",
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(8.dp))
             Text("Verify your email", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            Text("Enter the 6-digit code we sent to $email.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "Enter the 6-digit code we sent to $email.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Spacer(Modifier.height(24.dp))
             OutlinedTextField(
-                code,
-                { code = it.filter(Char::isDigit).take(6) },
-                Modifier.fillMaxWidth(),
+                value = code,
+                onValueChange = { code = it.filter(Char::isDigit).take(6) },
+                modifier = Modifier.fillMaxWidth(),
                 label = { Text("Verification code") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -42,20 +63,42 @@ fun OtpScreen(email: String, viewModel: AuthViewModel = hiltViewModel(), onBack:
             Button(
                 onClick = { viewModel.verifyOtp(email, code) {} },
                 enabled = !busy && code.length == 6,
-                Modifier.fillMaxWidth().height(54.dp),
+                modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(17.dp),
             ) {
                 if (busy) CircularProgressIndicator(strokeWidth = 2.dp)
                 else Text("Verify and continue", fontWeight = FontWeight.SemiBold)
             }
+
             message?.let {
                 Spacer(Modifier.height(12.dp))
-                Text(it, color = Color(0xFFD32F2F), style = MaterialTheme.typography.bodySmall)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFFFEBEE),
+                ) {
+                    Text(
+                        it,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        color = Color(0xFFC62828),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
+
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = { viewModel.resendOtp(email) }, enabled = !busy, Modifier.fillMaxWidth()) { Text("Resend code") }
+            OutlinedButton(
+                onClick = { viewModel.resendOtp(email) },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Resend code") }
+
             Spacer(Modifier.height(6.dp))
-            Text("Check your spam or promotions folder if needed.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "Check your spam or promotions folder if needed.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = onBack) { Text("Back") }
         }
