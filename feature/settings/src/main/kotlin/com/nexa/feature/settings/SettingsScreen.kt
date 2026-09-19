@@ -1,5 +1,7 @@
 package com.nexa.feature.settings
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -100,7 +102,7 @@ fun SettingsScreen(onOpenMemoryCenter: () -> Unit = {}) {
     var selectedPlan by remember { mutableStateOf<String?>(null) }
 
     Column(
-        Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+        Modifier.fillMaxSize().systemBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
