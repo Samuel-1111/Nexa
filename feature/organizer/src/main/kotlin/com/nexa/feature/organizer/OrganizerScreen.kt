@@ -27,7 +27,7 @@ fun OrganizerScreen() {
         OrganizerItem("Notes", "Capture ideas before they disappear.", "NOTES"),
     )
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 18.dp)) {
+    Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp)) {
         Text("Organizer", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text("Everything you want NEXA to keep organized.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 24.dp)) {
