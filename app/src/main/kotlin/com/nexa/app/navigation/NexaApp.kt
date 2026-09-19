@@ -73,6 +73,7 @@ fun NexaApp() {
             email = pendingOtpEmail,
             viewModel = authViewModel,
             onBack = { otpEmail = null },
+            onVerified = { otpEmail = null },
         )
         return
     }
