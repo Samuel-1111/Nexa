@@ -5,6 +5,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Configuration
@@ -25,6 +26,11 @@ class NexaApplication : Application(), Configuration.Provider {
         val request = PeriodicWorkRequestBuilder<NexaSyncWorker>(15, TimeUnit.MINUTES)
             .setConstraints(constraints)
             .build()
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            "nexa-sync-now",
+            androidx.work.ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequestBuilder<NexaSyncWorker>().setConstraints(constraints).build(),
+        )
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "nexa-sync",
             ExistingPeriodicWorkPolicy.KEEP,
