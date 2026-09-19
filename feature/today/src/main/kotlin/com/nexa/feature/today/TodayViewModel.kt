@@ -3,9 +3,10 @@ package com.nexa.feature.today
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexa.core.model.Priority
-import com.nexa.core.network.AuthRepository
 import com.nexa.core.model.Reminder
 import com.nexa.core.model.Task
+import com.nexa.core.network.AuthRepository
+import com.nexa.domain.NoteRepository
 import com.nexa.domain.ReminderRepository
 import com.nexa.domain.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,7 +19,7 @@ import javax.inject.Inject
 
 sealed interface TodayUiState {
     data object Loading : TodayUiState
-    data class Loaded(val tasks: List<Task>, val reminders: List<Reminder>) : TodayUiState
+    data class Loaded(val tasks: List<Task>, val reminders: List<Reminder>, val noteCount: Int) : TodayUiState
 }
 
 @HiltViewModel
@@ -26,22 +27,26 @@ class TodayViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val reminderRepository: ReminderRepository,
     private val authRepository: AuthRepository,
+    private val noteRepository: NoteRepository,
 ) : ViewModel() {
-
     private val _displayName = MutableStateFlow("there")
     val displayName: StateFlow<String> = _displayName
 
     init {
         viewModelScope.launch {
-            _displayName.value = authRepository.currentDisplayName() ?: authRepository.currentEmail?.substringBefore("@") ?: "there"
+            _displayName.value = authRepository.currentDisplayName()
+                ?: authRepository.currentEmail?.substringBefore("@")
+                ?: "there"
         }
     }
 
     val uiState: StateFlow<TodayUiState> = combine(
         taskRepository.observeOpenTasks(),
         reminderRepository.observeUpcoming(),
-    ) { tasks, reminders -> TodayUiState.Loaded(tasks, reminders) as TodayUiState }
-        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), TodayUiState.Loading)
+        noteRepository.observeRecent(),
+    ) { tasks, reminders, notes ->
+        TodayUiState.Loaded(tasks, reminders, notes.size)
+    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), TodayUiState.Loading)
 
     fun addQuickTask(title: String) {
         if (title.isBlank()) return
