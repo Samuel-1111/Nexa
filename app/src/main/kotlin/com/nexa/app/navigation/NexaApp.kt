@@ -78,7 +78,7 @@ fun NexaApp() {
     when (sessionStatus) {
         is SessionStatus.Authenticated -> {
             authMode = null
-            AuthenticatedApp()
+            AuthenticatedApp(authViewModel)
         }
         SessionStatus.Initializing -> LoadingAuth()
         is SessionStatus.RefreshFailure,
@@ -171,7 +171,7 @@ private fun LoadingAuth() {
 }
 
 @Composable
-private fun AuthenticatedApp() {
+private fun AuthenticatedApp(authViewModel: AuthViewModel) {
     val navController = rememberNavController()
 
     Scaffold(
@@ -186,7 +186,10 @@ private fun AuthenticatedApp() {
             composable(TopLevelDestination.Assistant.route) { AssistantScreen() }
             composable(TopLevelDestination.Organizer.route) { OrganizerScreen() }
             composable(TopLevelDestination.Settings.route) {
-                SettingsScreen(onOpenMemoryCenter = { navController.navigate("memory") })
+                SettingsScreen(
+                    onOpenMemoryCenter = { navController.navigate("memory") },
+                    onSignOut = { authViewModel.signOut() },
+                )
             }
             composable("memory") { MemoryScreen() }
         }
