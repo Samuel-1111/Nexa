@@ -47,7 +47,7 @@ fun TodayRoute(viewModel: TodayViewModel = hiltViewModel()) {
                             Text("Your day is clear. Nice. ✨", Modifier.padding(20.dp), style = MaterialTheme.typography.bodyLarge)
                         }
                     } else {
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+                        LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
                             items(loaded.tasks) { task ->
                                 Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
                                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
