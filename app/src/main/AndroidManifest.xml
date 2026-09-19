@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <application android:name=".NexaApplication" android:allowBackup="false" android:label="NEXA" android:theme="@style/Theme.Nexa">
+    <application android:name=".NexaApplication" android:allowBackup="false" android:label="NEXA" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:theme="@style/Theme.Nexa">
         <receiver android:name="com.nexa.core.notifications.ReminderAlarmReceiver" android:exported="false" />
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
