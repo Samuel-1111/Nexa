@@ -2,9 +2,10 @@ package com.nexa.core.network
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
-import io.github.jan.supabase.auth.OtpType
+import io.github.jan.supabase.auth.providers.builtin.OTP
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.flow.Flow
@@ -29,25 +30,34 @@ class AuthRepository(private val client: SupabaseClient) {
     val currentUserId: String? get() = client.auth.currentUserOrNull()?.id
     val currentEmail: String? get() = client.auth.currentUserOrNull()?.email
 
-    suspend fun signUpWithEmail(email: String, password: String) {
-        client.auth.signUpWith(Email) {
-            this.email = email
-            this.password = password
-        }
-    }
     suspend fun signInWithEmail(email: String, password: String) {
         client.auth.signInWith(Email) {
             this.email = email
             this.password = password
         }
     }
+
+    suspend fun requestEmailOtp(email: String) {
+        client.auth.signInWith(OTP) {
+            this.email = email
+        }
+    }
+
     suspend fun verifyEmailOtp(email: String, token: String) {
-        client.auth.verifyEmailOtp(type = OtpType.Email.EMAIL, email = email, token = token)
+        client.auth.verifyEmailOtp(
+            type = OtpType.Email.EMAIL,
+            email = email,
+            token = token,
+        )
     }
-    suspend fun resendSignupOtp(email: String) {
-        client.auth.resendEmail(OtpType.Email.SIGNUP, email)
+
+    suspend fun sendPasswordResetEmail(email: String) {
+        client.auth.resetPasswordForEmail(email)
     }
-    suspend fun sendPasswordResetEmail(email: String) { client.auth.resetPasswordForEmail(email) }
-    suspend fun updatePassword(password: String) { client.auth.updateUser { this.password = password } }
+
+    suspend fun updatePassword(password: String) {
+        client.auth.updateUser { this.password = password }
+    }
+
     suspend fun signOut() = client.auth.signOut()
 }
