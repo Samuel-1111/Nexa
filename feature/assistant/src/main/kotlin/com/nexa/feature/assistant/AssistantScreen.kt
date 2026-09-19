@@ -1,6 +1,8 @@
 package com.nexa.feature.assistant
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
@@ -61,15 +63,9 @@ fun AssistantScreen() {
 
         Spacer(Modifier.weight(1f))
 
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            listOf("Plan my day", "Add a reminder", "Take a note").forEach { suggestion ->
-                AssistChip(
-                    onClick = { text = suggestion },
-                    label = { Text(suggestion) },
-                )
+        LazyRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
+            items(listOf("Plan my day", "Add a reminder", "Take a note")) { suggestion ->
+                AssistChip(onClick = { text = suggestion }, label = { Text(suggestion) })
             }
         }
 
