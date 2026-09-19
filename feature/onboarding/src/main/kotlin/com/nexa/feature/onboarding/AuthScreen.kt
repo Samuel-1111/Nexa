@@ -32,37 +32,82 @@ fun AuthScreen(
     val message by viewModel.message.collectAsState()
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 28.dp),
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .systemBarsPadding()
+            .padding(horizontal = 22.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-        Column(Modifier.fillMaxWidth().widthIn(max = 520.dp)) {
-            Text("NEXA", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+        Column(
+            Modifier.fillMaxWidth().widthIn(max = 520.dp),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Spacer(Modifier.height(20.dp))
+            Text(
+                "NEXA",
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+            )
             Spacer(Modifier.height(6.dp))
             Text(
-                when { resetPassword -> "Reset your password"; createAccount -> "Create your account"; else -> "Welcome back" },
-                style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
+                when {
+                    resetPassword -> "Reset your password"
+                    createAccount -> "Create your account"
+                    else -> "Welcome back"
+                },
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 when {
                     resetPassword -> "We’ll help you get back into NEXA."
-                    createAccount -> "Create your NEXA account and verify your email with a 6-digit code."
+                    createAccount -> "Create your NEXA account. We’ll send a 6-digit code to your email."
                     else -> "Sign in and get back to your day."
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
             Spacer(Modifier.height(24.dp))
-            OutlinedTextField(email, { email = it }, Modifier.fillMaxWidth(), label = { Text("Email address") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), shape = RoundedCornerShape(16.dp))
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Email address") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                shape = RoundedCornerShape(16.dp),
+            )
+
             if (!resetPassword) {
                 Spacer(Modifier.height(12.dp))
-                OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), label = { Text("Password") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(16.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Password") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    shape = RoundedCornerShape(16.dp),
+                )
+
                 if (createAccount) {
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(confirmPassword, { confirmPassword = it }, Modifier.fillMaxWidth(), label = { Text("Confirm password") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(16.dp))
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Confirm password") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        shape = RoundedCornerShape(16.dp),
+                    )
                 }
             }
+
             Spacer(Modifier.height(18.dp))
             Button(
                 onClick = {
@@ -72,24 +117,67 @@ fun AuthScreen(
                         else -> viewModel.signIn(email, password)
                     }
                 },
-                enabled = !busy && email.isNotBlank(),
-                Modifier.fillMaxWidth().height(54.dp),
+                enabled = !busy && email.isNotBlank() && (resetPassword || password.isNotBlank()),
+                modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(17.dp),
             ) {
                 if (busy) CircularProgressIndicator(strokeWidth = 2.dp)
-                else Text(when { resetPassword -> "Send reset instructions"; createAccount -> "Create account"; else -> "Log in" }, fontWeight = FontWeight.SemiBold)
+                else Text(
+                    when {
+                        resetPassword -> "Send reset instructions"
+                        createAccount -> "Create account"
+                        else -> "Log in"
+                    },
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
+
+            // Errors are deliberately reduced to one short, human-readable line.
+            // Raw Supabase/HTTP exception dumps are never rendered here.
             message?.let {
                 Spacer(Modifier.height(12.dp))
-                Text(it, color = Color(0xFFD32F2F), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFFFEBEE),
+                ) {
+                    Text(
+                        it,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        color = Color(0xFFC62828),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
             }
-            Spacer(Modifier.height(10.dp))
-            if (!resetPassword && !createAccount) TextButton(onClick = { resetPassword = true }) { Text("Forgot password?") }
-            TextButton(onClick = { resetPassword = false; createAccount = !createAccount; viewModel.clearMessage() }) {
+
+            Spacer(Modifier.height(8.dp))
+            if (!resetPassword && !createAccount) {
+                TextButton(onClick = { resetPassword = true; viewModel.clearMessage() }) {
+                    Text("Forgot password?")
+                }
+            }
+
+            TextButton(
+                onClick = {
+                    resetPassword = false
+                    createAccount = !createAccount
+                    viewModel.clearMessage()
+                },
+            ) {
                 Text(if (createAccount) "Already have an account? Log in" else "Create a NEXA account")
             }
-            if (resetPassword) OutlinedButton(onClick = { resetPassword = false; viewModel.clearMessage() }) { Text("Back to login") }
-            if (!resetPassword) TextButton(onClick = onBack) { Text("Back") }
+
+            if (resetPassword) {
+                OutlinedButton(
+                    onClick = { resetPassword = false; viewModel.clearMessage() },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Back to login")
+                }
+            } else {
+                TextButton(onClick = onBack) { Text("Back") }
+            }
         }
     }
 }
