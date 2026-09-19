@@ -88,6 +88,8 @@ class VoiceCaptureController {
         recorder = null
     }
 
+    fun clear() { mutableState.value = VoiceCaptureState.Idle }
+
     fun release() = stop()
 
     private fun wavBytes(pcm: ByteArray, rate: Int): ByteArray {
