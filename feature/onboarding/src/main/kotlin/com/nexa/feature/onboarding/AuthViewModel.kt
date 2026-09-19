@@ -42,7 +42,7 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
         _busy.value = true
         _message.value = null
         try {
-            require(token.trim().length == 6) {
+            require(token.trim().matches(Regex("\\d{6}"))) {
                 "Enter the 6-digit code from your email."
             }
             authRepository.verifyEmailOtp(email.trim(), token.trim())
@@ -126,7 +126,7 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
             raw.contains("user already registered") -> "An account with this email already exists."
             raw.contains("email not confirmed") -> "Please enter the verification code sent to your email."
             raw.contains("token has expired") || raw.contains("otp expired") -> "That code has expired. Request a new one."
-            raw.contains("invalid") && raw.contains("otp") -> "That verification code is not correct."
+            raw.contains("invalid token") || raw.contains("invalid otp") || raw.contains("invalid verification") || (raw.contains("invalid") && raw.contains("otp")) -> "Incorrect verification code. Please try again."
             raw.contains("rate limit") || raw.contains("too many") -> "Too many attempts. Please wait a moment and try again."
             raw.contains("network") || raw.contains("timeout") || raw.contains("connection") -> "Check your internet connection and try again."
             raw.contains("already registered") -> "An account with this email already exists."
