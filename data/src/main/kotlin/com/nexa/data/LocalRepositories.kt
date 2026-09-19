@@ -100,7 +100,8 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
             try {
                 when (operation.entityType) {
                     "TASK" -> {
-                        val entity = database.taskDao().get(operation.entityId) ?: run {
+                        val entity = database.taskDao().get(operation.entityId)
+                        if (entity == null) {
                             database.outboxDao().markDone(operation.id, System.currentTimeMillis())
                             continue
                         }
@@ -122,7 +123,8 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                         database.taskDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
                     }
                     "REMINDER" -> {
-                        val entity = database.reminderDao().get(operation.entityId) ?: run {
+                        val entity = database.reminderDao().get(operation.entityId)
+                        if (entity == null) {
                             database.outboxDao().markDone(operation.id, System.currentTimeMillis())
                             continue
                         }
@@ -143,7 +145,8 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                         database.reminderDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
                     }
                     "NOTE" -> {
-                        val entity = database.noteDao().get(operation.entityId) ?: run {
+                        val entity = database.noteDao().get(operation.entityId)
+                        if (entity == null) {
                             database.outboxDao().markDone(operation.id, System.currentTimeMillis())
                             continue
                         }
@@ -161,7 +164,8 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                         database.noteDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
                     }
                     "MEMORY" -> {
-                        val entity = database.memoryDao().get(operation.entityId) ?: run {
+                        val entity = database.memoryDao().get(operation.entityId)
+                        if (entity == null) {
                             database.outboxDao().markDone(operation.id, System.currentTimeMillis())
                             continue
                         }
