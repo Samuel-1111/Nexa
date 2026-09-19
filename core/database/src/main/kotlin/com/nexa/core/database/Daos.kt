@@ -22,6 +22,8 @@ interface ReminderDao {
     fun observeActive(): Flow<List<ReminderEntity>>
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: ReminderEntity)
+    @Query("SELECT * FROM reminders WHERE id = :id LIMIT 1")
+    suspend fun get(id: String): ReminderEntity?
 }
 
 @Dao
@@ -30,6 +32,8 @@ interface NoteDao {
     fun observeRecent(): Flow<List<NoteEntity>>
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: NoteEntity)
+    @Query("SELECT * FROM notes WHERE id = :id LIMIT 1")
+    suspend fun get(id: String): NoteEntity?
 }
 
 @Dao
@@ -57,4 +61,8 @@ interface OutboxDao {
     suspend fun pending(now: Long): List<OutboxOperationEntity>
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: OutboxOperationEntity)
+    @Query("UPDATE outbox_operations SET state = 'DONE', lastErrorCode = NULL, updatedAtEpochMs = :now WHERE id = :id")
+    suspend fun markDone(id: String, now: Long)
+    @Query("UPDATE outbox_operations SET state = 'RETRY', attemptCount = attemptCount + 1, lastErrorCode = :error, nextAttemptAtEpochMs = :nextAttempt, updatedAtEpochMs = :now WHERE id = :id")
+    suspend fun markRetry(id: String, error: String, nextAttempt: Long, now: Long)
 }
