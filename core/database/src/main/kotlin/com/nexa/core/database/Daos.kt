@@ -42,6 +42,8 @@ interface MemoryDao {
     fun observeAll(): Flow<List<MemoryEntity>>
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: MemoryEntity)
+    @Query("SELECT * FROM memories WHERE id = :id LIMIT 1")
+    suspend fun get(id: String): MemoryEntity?
     // Memory Center actions (spec: memory must be explicitly approved, never
     // silently promoted from SUGGESTED to ACTIVE). Each sets status + touches
     // updatedAtEpochMs; approve also stamps consentedAtEpochMs.
