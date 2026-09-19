@@ -43,7 +43,11 @@ fun OtpScreen(
                 color = MaterialTheme.colorScheme.primary,
             )
             Spacer(Modifier.height(8.dp))
-            Text("Verify your email", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(
+                "Enter your code",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
             Spacer(Modifier.height(8.dp))
             Text(
                 "Enter the 6-digit code we sent to $email.",
@@ -92,11 +96,13 @@ fun OtpScreen(
                 onClick = { viewModel.resendOtp(email) },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Resend code") }
+            ) {
+                Text("Resend code")
+            }
 
             Spacer(Modifier.height(6.dp))
             Text(
-                "Check your spam or promotions folder if needed.",
+                "If you don't see it, check spam or promotions.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
