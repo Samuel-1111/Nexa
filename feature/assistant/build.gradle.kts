@@ -2,10 +2,14 @@ plugins { alias(libs.plugins.android.library); alias(libs.plugins.kotlin.android
 android { namespace = "com.nexa.feature.assistant"; compileSdk = 35; defaultConfig { minSdk = 26 }; buildFeatures { compose = true } }
 dependencies {
     implementation(project(":core:designsystem"))
+    implementation(project(":core:network"))
+    implementation(project(":core:voice"))
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.ui:ui")
+    implementation("androidx.activity:activity-compose")
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 }
