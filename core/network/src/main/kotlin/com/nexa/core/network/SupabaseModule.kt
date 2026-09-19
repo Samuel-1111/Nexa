@@ -8,6 +8,10 @@ import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.providers.builtin.OTP
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -22,6 +26,9 @@ fun buildSupabaseClient(): SupabaseClient = createSupabaseClient(
     }
 }
 
+@Serializable
+private data class ProfileNameRow(@SerialName("display_name") val displayName: String? = null)
+
 class AuthRepository(private val client: SupabaseClient) {
     val isAuthenticated: Flow<Boolean> = client.auth.sessionStatus.map {
         it is io.github.jan.supabase.auth.status.SessionStatus.Authenticated
@@ -29,6 +36,15 @@ class AuthRepository(private val client: SupabaseClient) {
     val sessionStatus = client.auth.sessionStatus
     val currentUserId: String? get() = client.auth.currentUserOrNull()?.id
     val currentEmail: String? get() = client.auth.currentUserOrNull()?.email
+
+    suspend fun currentDisplayName(): String? {
+        val id = currentUserId ?: return null
+        return runCatching {
+            client.from("profiles").select(columns = Columns.list("display_name")) {
+                filter { eq("id", id) }
+            }.decodeSingle<ProfileNameRow>().displayName?.takeIf { it.isNotBlank() }
+        }.getOrNull()
+    }
 
     suspend fun signInWithEmail(email: String, password: String) {
         client.auth.signInWith(Email) {
