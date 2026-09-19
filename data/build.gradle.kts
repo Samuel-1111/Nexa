@@ -6,6 +6,7 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:database"))
     implementation(project(":core:model"))
+    implementation(project(":core:notifications"))
     implementation(project(":domain"))
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
