@@ -16,6 +16,7 @@ import com.nexa.core.model.ReminderPrecision
 import com.nexa.core.model.ReminderScheduleState
 import com.nexa.core.model.Task
 import com.nexa.core.model.TaskStatus
+import com.nexa.core.notifications.ReminderScheduler
 import com.nexa.domain.NoteRepository
 import com.nexa.domain.ReminderRepository
 import com.nexa.domain.TaskRepository
@@ -27,7 +28,6 @@ class LocalTaskRepository(private val database: NexaDatabase) : TaskRepository {
     override fun observeOpenTasks(): Flow<List<Task>> = database.taskDao().observeOpen().map { rows ->
         rows.map { Task(EntityId(it.id), it.title, it.body, TaskStatus.valueOf(it.status), Priority.valueOf(it.priority), it.dueAtEpochMs?.let(Instant::ofEpochMilli), it.completedAtEpochMs?.let(Instant::ofEpochMilli)) }
     }
-
     override suspend fun create(title: String, priority: Priority, dueAt: Instant?): Task {
         val id = EntityId.new()
         val now = SystemClock.now().toEpochMilli()
@@ -37,7 +37,6 @@ class LocalTaskRepository(private val database: NexaDatabase) : TaskRepository {
         }
         return Task(id, title, priority = priority, dueAt = dueAt)
     }
-
     override suspend fun complete(id: EntityId) {
         val existing = database.taskDao().get(id.value) ?: return
         val now = SystemClock.now().toEpochMilli()
@@ -48,19 +47,23 @@ class LocalTaskRepository(private val database: NexaDatabase) : TaskRepository {
     }
 }
 
-class LocalReminderRepository(private val database: NexaDatabase) : ReminderRepository {
+class LocalReminderRepository(
+    private val database: NexaDatabase,
+    private val scheduler: ReminderScheduler,
+) : ReminderRepository {
     override fun observeUpcoming(): Flow<List<Reminder>> = database.reminderDao().observeActive().map { rows ->
         rows.map { Reminder(EntityId(it.id), it.taskId?.let(::EntityId), it.title, it.body, Instant.ofEpochMilli(it.triggerAtEpochMs), it.timezoneId, ReminderScheduleState.valueOf(it.scheduleState), ReminderPrecision.valueOf(it.deliveryPrecision)) }
     }
-
     override suspend fun create(title: String, triggerAt: Instant, timezoneId: String): Reminder {
         val id = EntityId.new()
         val now = SystemClock.now().toEpochMilli()
         database.withTransaction {
-            database.reminderDao().upsert(ReminderEntity(id.value, null, null, title, null, triggerAt.toEpochMilli(), timezoneId, "FIXED_INSTANT", "STANDARD", id.value.hashCode(), "UNSCHEDULED", null, now, now, null, 0, "PENDING"))
+            database.reminderDao().upsert(ReminderEntity(id.value, null, null, title, null, triggerAt.toEpochMilli(), timezoneId, "FIXED_INSTANT", "STANDARD", id.value.hashCode(), "SCHEDULED", null, now, now, null, 0, "PENDING"))
             database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "REMINDER", id.value, "UPSERT", 0, "{\"id\":\"${id.value}\"}", "PENDING", 0, null, null, now, now))
         }
-        return Reminder(id, title = title, triggerAt = triggerAt, timezoneId = timezoneId)
+        val reminder = Reminder(id, title = title, triggerAt = triggerAt, timezoneId = timezoneId, scheduleState = ReminderScheduleState.SCHEDULED)
+        scheduler.schedule(reminder)
+        return reminder
     }
 }
 
@@ -68,7 +71,6 @@ class LocalNoteRepository(private val database: NexaDatabase) : NoteRepository {
     override fun observeRecent(): Flow<List<Note>> = database.noteDao().observeRecent().map { rows ->
         rows.map { Note(EntityId(it.id), it.title, it.body, NoteSource.valueOf(it.source)) }
     }
-
     override suspend fun create(body: String, source: NoteSource): Note {
         val id = EntityId.new()
         val now = SystemClock.now().toEpochMilli()
