@@ -81,3 +81,115 @@ class LocalNoteRepository(private val database: NexaDatabase) : NoteRepository {
         return Note(id, body = body, source = source)
     }
 }
+
+
+@androidx.hilt.work.HiltWorker
+class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
+    @dagger.assisted.Assisted appContext: android.content.Context,
+    @dagger.assisted.Assisted workerParams: androidx.work.WorkerParameters,
+    private val database: NexaDatabase,
+    private val supabase: io.github.jan.supabase.SupabaseClient,
+) : androidx.work.CoroutineWorker(appContext, workerParams) {
+
+    override suspend fun doWork(): Result {
+        val userId = supabase.auth.currentUserOrNull()?.id ?: return Result.retry()
+        val pending = database.outboxDao().pending(System.currentTimeMillis())
+        if (pending.isEmpty()) return Result.success()
+
+        for (operation in pending) {
+            try {
+                when (operation.entityType) {
+                    "TASK" -> {
+                        val entity = database.taskDao().get(operation.entityId) ?: run {
+                            database.outboxDao().markDone(operation.id, System.currentTimeMillis())
+                            continue
+                        }
+                        supabase.from("tasks").upsert(kotlinx.serialization.json.buildJsonObject {
+                            put("id", entity.id)
+                            put("owner_id", userId)
+                            put("title", entity.title)
+                            put("body", entity.body)
+                            put("status", entity.status)
+                            put("priority", entity.priority)
+                            entity.dueAtEpochMs?.let { put("due_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                            entity.dueTimezoneId?.let { put("due_timezone", it) }
+                            entity.completedAtEpochMs?.let { put("completed_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                            put("server_version", maxOf(1L, entity.serverVersion))
+                            put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
+                            put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
+                            entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                        })
+                        database.taskDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
+                    }
+                    "REMINDER" -> {
+                        val entity = database.reminderDao().get(operation.entityId) ?: run {
+                            database.outboxDao().markDone(operation.id, System.currentTimeMillis())
+                            continue
+                        }
+                        supabase.from("reminders").upsert(kotlinx.serialization.json.buildJsonObject {
+                            put("id", entity.id)
+                            put("owner_id", userId)
+                            entity.taskId?.let { put("task_id", it) }
+                            put("title", entity.title)
+                            put("body", entity.body)
+                            put("trigger_at", java.time.Instant.ofEpochMilli(entity.triggerAtEpochMs).toString())
+                            put("timezone", entity.timezoneId)
+                            put("schedule_state", entity.scheduleState)
+                            put("server_version", maxOf(1L, entity.serverVersion))
+                            put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
+                            put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
+                            entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                        })
+                        database.reminderDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
+                    }
+                    "NOTE" -> {
+                        val entity = database.noteDao().get(operation.entityId) ?: run {
+                            database.outboxDao().markDone(operation.id, System.currentTimeMillis())
+                            continue
+                        }
+                        supabase.from("notes").upsert(kotlinx.serialization.json.buildJsonObject {
+                            put("id", entity.id)
+                            put("owner_id", userId)
+                            put("title", entity.title)
+                            put("body", entity.body)
+                            put("source", entity.source)
+                            put("server_version", maxOf(1L, entity.serverVersion))
+                            put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
+                            put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
+                            entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                        })
+                        database.noteDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
+                    }
+                    "MEMORY" -> {
+                        val entity = database.memoryDao().get(operation.entityId) ?: run {
+                            database.outboxDao().markDone(operation.id, System.currentTimeMillis())
+                            continue
+                        }
+                        supabase.from("memories").upsert(kotlinx.serialization.json.buildJsonObject {
+                            put("id", entity.id)
+                            put("owner_id", userId)
+                            put("content", entity.content)
+                            put("category", entity.category)
+                            put("status", entity.status)
+                            put("source_type", entity.sourceType)
+                            entity.sourceEntityId?.let { put("source_entity_id", it) }
+                            entity.consentedAtEpochMs?.let { put("consented_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                            put("server_version", maxOf(1L, entity.serverVersion))
+                            put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
+                            put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
+                            entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                        })
+                        database.memoryDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
+                    }
+                    else -> database.outboxDao().markDone(operation.id, System.currentTimeMillis())
+                }
+                database.outboxDao().markDone(operation.id, System.currentTimeMillis())
+            } catch (e: Exception) {
+                val now = System.currentTimeMillis()
+                val delay = (30_000L * (1L shl operation.attemptCount.coerceAtMost(5))).coerceAtMost(30 * 60_000L)
+                database.outboxDao().markRetry(operation.id, e.message?.take(240) ?: "sync_failed", now + delay, now)
+            }
+        }
+        return Result.success()
+    }
+}
