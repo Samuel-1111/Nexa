@@ -1,6 +1,7 @@
 package com.nexa.app.di
 
 import com.nexa.core.database.NexaDatabase
+import com.nexa.core.notifications.ReminderScheduler
 import com.nexa.data.LocalMemoryRepository
 import com.nexa.data.LocalNoteRepository
 import com.nexa.data.LocalReminderRepository
@@ -17,32 +18,21 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/**
- * Single place where domain interfaces are bound to their local-first
- * implementations. Swapping TaskRepository's backing implementation later
- * (e.g. to add remote-first reads once sync matures) only touches this file.
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object RepositoryModule {
-
-    @Provides
-    @Singleton
+    @Provides @Singleton
     fun provideTaskRepository(db: NexaDatabase): TaskRepository = LocalTaskRepository(db)
 
-    @Provides
-    @Singleton
-    fun provideReminderRepository(db: NexaDatabase): ReminderRepository = LocalReminderRepository(db)
+    @Provides @Singleton
+    fun provideReminderRepository(db: NexaDatabase, scheduler: ReminderScheduler): ReminderRepository = LocalReminderRepository(db, scheduler)
 
-    @Provides
-    @Singleton
+    @Provides @Singleton
     fun provideNoteRepository(db: NexaDatabase): NoteRepository = LocalNoteRepository(db)
 
-    @Provides
-    @Singleton
+    @Provides @Singleton
     fun provideMemoryRepository(db: NexaDatabase): MemoryRepository = LocalMemoryRepository(db)
 
-    @Provides
-    @Singleton
+    @Provides @Singleton
     fun provideCommandInterpreter(): CommandInterpreter = DeterministicCommandInterpreter()
 }
