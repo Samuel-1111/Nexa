@@ -3,6 +3,7 @@ package com.nexa.feature.today
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexa.core.model.Priority
+import com.nexa.core.network.AuthRepository
 import com.nexa.core.model.Reminder
 import com.nexa.core.model.Task
 import com.nexa.domain.ReminderRepository
@@ -24,7 +25,17 @@ sealed interface TodayUiState {
 class TodayViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val reminderRepository: ReminderRepository,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
+
+    private val _displayName = MutableStateFlow("there")
+    val displayName: StateFlow<String> = _displayName
+
+    init {
+        viewModelScope.launch {
+            _displayName.value = authRepository.currentDisplayName() ?: authRepository.currentEmail?.substringBefore("@") ?: "there"
+        }
+    }
 
     val uiState: StateFlow<TodayUiState> = combine(
         taskRepository.observeOpenTasks(),
