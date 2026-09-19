@@ -26,6 +26,7 @@ data class AiChatRequest(
 
 @Serializable
 data class AiChatResponse(
+    val chat_id: String? = null,
     val reply: String = "",
     val transcript: String? = null,
     val audio_base64: String? = null,
