@@ -15,13 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.DisposableEffect
 import com.nexa.core.voice.VoiceCaptureController
 import com.nexa.core.voice.VoiceCaptureState
 
 @Composable
 fun AssistantScreen(
     viewModel: AssistantViewModel = hiltViewModel(),
-    voiceController: VoiceCaptureController = hiltViewModel(),
+    voiceController: VoiceCaptureController = remember { VoiceCaptureController() },
 ) {
     var text by rememberSaveable { mutableStateOf("") }
     val reply by viewModel.reply.collectAsState()
@@ -49,6 +50,10 @@ fun AssistantScreen(
     }
 
     val listening = voiceState is VoiceCaptureState.Listening
+
+    DisposableEffect(Unit) {
+        onDispose { voiceController.release() }
+    }
 
     Column(
         Modifier
