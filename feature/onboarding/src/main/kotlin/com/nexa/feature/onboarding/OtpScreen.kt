@@ -17,7 +17,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun OtpScreen(
     email: String,
-    createAccount: Boolean = true,
     viewModel: AuthViewModel = hiltViewModel(),
     onBack: () -> Unit = {},
     onVerified: () -> Unit = {},
@@ -95,7 +94,7 @@ fun OtpScreen(
 
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
-                onClick = { viewModel.resendOtp(email, createAccount) },
+                onClick = { viewModel.resendOtp(email) },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) {

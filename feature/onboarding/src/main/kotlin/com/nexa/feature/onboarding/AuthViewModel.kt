@@ -21,15 +21,15 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
 
     fun clearMessage() { _message.value = null }
 
-    fun requestOtp(email: String, createAccount: Boolean, onOtpSent: (String) -> Unit) = viewModelScope.launch {
+    fun signUp(email: String, password: String, confirmPassword: String, onOtpSent: (String) -> Unit) = viewModelScope.launch {
         _busy.value = true
         _message.value = null
         try {
             val cleanEmail = email.trim()
-            require(cleanEmail.contains("@") && cleanEmail.contains(".")) {
-                "Enter a valid email address."
-            }
-            authRepository.requestEmailOtp(cleanEmail, createUser = createAccount)
+            require(cleanEmail.contains("@") && cleanEmail.contains(".")) { "Enter a valid email address." }
+            require(password == confirmPassword) { "Passwords do not match." }
+            require(password.length >= 6) { "Password must be at least 6 characters." }
+            authRepository.signUpWithEmail(cleanEmail, password)
             onOtpSent(cleanEmail)
         } catch (e: Exception) {
             _message.value = friendlyError(e)
@@ -45,7 +45,7 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
             require(token.trim().matches(Regex("\\d{6}"))) {
                 "Enter the 6-digit code from your email."
             }
-            authRepository.verifyEmailOtp(email.trim(), token.trim())
+            authRepository.verifySignupOtp(email.trim(), token.trim())
             onVerified()
         } catch (e: Exception) {
             _message.value = friendlyError(e)
@@ -54,11 +54,11 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
         }
     }
 
-    fun resendOtp(email: String, createAccount: Boolean) = viewModelScope.launch {
+    fun resendOtp(email: String) = viewModelScope.launch {
         _busy.value = true
         _message.value = null
         try {
-            authRepository.requestEmailOtp(email.trim(), createUser = createAccount)
+            authRepository.resendSignupOtp(email.trim())
             _message.value = "A new verification code has been sent."
         } catch (e: Exception) {
             _message.value = friendlyError(e)

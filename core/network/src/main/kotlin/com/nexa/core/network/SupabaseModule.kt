@@ -5,7 +5,6 @@ import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
-import io.github.jan.supabase.auth.providers.builtin.OTP
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
@@ -53,19 +52,29 @@ class AuthRepository(private val client: SupabaseClient) {
         }
     }
 
-    suspend fun requestEmailOtp(email: String, createUser: Boolean = true) {
-        client.auth.signInWith(OTP) {
+    // Real signup: creates the account WITH a password (unlike the OTP/magic-link
+    // flow, which creates a passwordless account). Supabase emails a 6-digit
+    // code as part of its normal "confirm signup" email. Login afterwards
+    // uses that same password -- no OTP needed to log back in.
+    suspend fun signUpWithEmail(email: String, password: String) {
+        client.auth.signUpWith(Email) {
             this.email = email
-            this.createUser = createUser
+            this.password = password
         }
     }
 
-    suspend fun verifyEmailOtp(email: String, token: String) {
+    // Verifies the code from that signup confirmation email. Uses the SIGNUP
+    // type, matching signUpWithEmail above -- not the passwordless OTP type.
+    suspend fun verifySignupOtp(email: String, token: String) {
         client.auth.verifyEmailOtp(
-            type = OtpType.Email.EMAIL,
+            type = OtpType.Email.SIGNUP,
             email = email,
             token = token,
         )
+    }
+
+    suspend fun resendSignupOtp(email: String) {
+        client.auth.resendEmail(OtpType.Email.SIGNUP, email)
     }
 
     suspend fun sendPasswordResetEmail(email: String) {
