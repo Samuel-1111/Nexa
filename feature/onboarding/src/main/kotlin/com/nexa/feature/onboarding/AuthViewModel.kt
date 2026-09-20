@@ -21,7 +21,7 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
 
     fun clearMessage() { _message.value = null }
 
-    fun requestOtp(email: String, onOtpSent: (String) -> Unit) = viewModelScope.launch {
+    fun requestOtp(email: String, createAccount: Boolean, onOtpSent: (String) -> Unit) = viewModelScope.launch {
         _busy.value = true
         _message.value = null
         try {
@@ -29,7 +29,7 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
             require(cleanEmail.contains("@") && cleanEmail.contains(".")) {
                 "Enter a valid email address."
             }
-            authRepository.requestEmailOtp(cleanEmail)
+            authRepository.requestEmailOtp(cleanEmail, createUser = createAccount)
             onOtpSent(cleanEmail)
         } catch (e: Exception) {
             _message.value = friendlyError(e)
@@ -54,11 +54,11 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
         }
     }
 
-    fun resendOtp(email: String) = viewModelScope.launch {
+    fun resendOtp(email: String, createAccount: Boolean) = viewModelScope.launch {
         _busy.value = true
         _message.value = null
         try {
-            authRepository.requestEmailOtp(email.trim())
+            authRepository.requestEmailOtp(email.trim(), createUser = createAccount)
             _message.value = "A new verification code has been sent."
         } catch (e: Exception) {
             _message.value = friendlyError(e)
