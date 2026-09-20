@@ -52,9 +52,20 @@ jobs:
           test -n "${{ secrets.NEXA_SUPABASE_ANON_KEY }}" || echo "Using checked-in public Supabase publishable-key fallback."
 
       - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+        run: |
+          set -o pipefail
+          gradle assembleDebug --stacktrace --info 2>&1 | tee build.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXA-build-log
+          path: build.log
+          if-no-files-found: warn
 
       - name: Upload NEXA APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: NEXA-debug-apk
