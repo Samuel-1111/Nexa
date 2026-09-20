@@ -243,13 +243,13 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             put("body", entity.body)
                             put("status", entity.status)
                             put("priority", entity.priority)
-                            entity.dueAtEpochMs?.let { put("due_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(it).toString()))) }
+                            entity.dueAtEpochMs?.let { put("due_at", java.time.Instant.ofEpochMilli(it).toString()) }
                             entity.dueTimezoneId?.let { put("due_timezone", it) }
-                            entity.completedAtEpochMs?.let { put("completed_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(it).toString()))) }
-                            put("server_version", Json.encodeToJsonElement(maxOf(1L, entity.serverVersion)))
-                            put("created_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
-                            put("updated_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
-                            entity.deletedAtEpochMs?.let { put("deleted_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(it).toString()))) }
+                            entity.completedAtEpochMs?.let { put("completed_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                            put("server_version", maxOf(1L, entity.serverVersion))
+                            put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
+                            put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
+                            entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
                         })
                         database.taskDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
                     }
@@ -265,13 +265,13 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             entity.taskId?.let { put("task_id", it) }
                             put("title", entity.title)
                             put("body", entity.body)
-                            put("trigger_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.triggerAtEpochMs).toString())))
+                            put("trigger_at", java.time.Instant.ofEpochMilli(entity.triggerAtEpochMs).toString())
                             put("timezone", entity.timezoneId)
                             put("schedule_state", entity.scheduleState)
-                            put("server_version", Json.encodeToJsonElement(maxOf(1L, entity.serverVersion)))
-                            put("created_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
-                            put("updated_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
-                            entity.deletedAtEpochMs?.let { put("deleted_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(it).toString()))) }
+                            put("server_version", maxOf(1L, entity.serverVersion))
+                            put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
+                            put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
+                            entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
                         })
                         database.reminderDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
                     }
@@ -287,10 +287,10 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             put("title", entity.title)
                             put("body", entity.body)
                             put("source", entity.source)
-                            put("server_version", Json.encodeToJsonElement(maxOf(1L, entity.serverVersion)))
-                            put("created_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
-                            put("updated_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
-                            entity.deletedAtEpochMs?.let { put("deleted_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(it).toString()))) }
+                            put("server_version", maxOf(1L, entity.serverVersion))
+                            put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
+                            put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
+                            entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
                         })
                         database.noteDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
                     }
@@ -308,11 +308,11 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             put("status", entity.status)
                             put("source_type", entity.sourceType)
                             entity.sourceEntityId?.let { put("source_entity_id", it) }
-                            entity.consentedAtEpochMs?.let { put("consented_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(it).toString()))) }
-                            put("server_version", Json.encodeToJsonElement(maxOf(1L, entity.serverVersion)))
-                            put("created_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
-                            put("updated_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
-                            entity.deletedAtEpochMs?.let { put("deleted_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(it).toString()))) }
+                            entity.consentedAtEpochMs?.let { put("consented_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                            put("server_version", maxOf(1L, entity.serverVersion))
+                            put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
+                            put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
+                            entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
                         })
                         database.memoryDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
                     }
