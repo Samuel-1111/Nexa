@@ -3,12 +3,14 @@ android { namespace = "com.nexa.feature.organizer"; compileSdk = 35; defaultConf
 dependencies {
     implementation(project(":domain"))
     implementation(project(":core:designsystem"))
+    implementation(project(":core:common"))
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.ui:ui")
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.hilt.navigation.compose)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 }
