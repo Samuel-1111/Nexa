@@ -11,7 +11,7 @@ android {
     compileSdk = 35
     defaultConfig { minSdk = 26 }
 
-    // NEXA_SUPABASE_URL / NEXA_SUPABASE_ANON_KEY are read from local.properties
+    // NEXA_SUPABASE_URL / NEXA_SUPABASE_ANON_KEY may be overridden by local.properties
     // (gitignored) or CI secrets, never hardcoded. The anon key is a PUBLIC key
     // by Supabase's own design (safe to ship in a client, protected by RLS) --
     // it is NOT the service-role key, which must never appear in this app.
@@ -20,8 +20,8 @@ android {
         if (f.exists()) f.inputStream().use { load(it) }
     }
     defaultConfig {
-        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("NEXA_SUPABASE_URL", "")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("NEXA_SUPABASE_ANON_KEY", "")}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("NEXA_SUPABASE_URL", "https://blunbsmuohzregwubdex.supabase.co")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("NEXA_SUPABASE_ANON_KEY", "sb_publishable_aDPGTtSWQaoyBK4I1cB0KA_CwcRDb8C")}\"")
     }
     buildFeatures { buildConfig = true }
 }
