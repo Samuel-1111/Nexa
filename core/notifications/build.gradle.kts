@@ -5,6 +5,6 @@ android { namespace = "com.nexa.core.notifications"; compileSdk = 35; defaultCon
 dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:model"))
+    implementation(project(":core:database"))
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.work.runtime.ktx)
 }
