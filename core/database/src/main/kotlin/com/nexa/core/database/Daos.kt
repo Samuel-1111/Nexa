@@ -24,6 +24,8 @@ interface ReminderDao {
     suspend fun upsert(entity: ReminderEntity)
     @Query("SELECT * FROM reminders WHERE id = :id LIMIT 1")
     suspend fun get(id: String): ReminderEntity?
+    @Query("SELECT * FROM reminders WHERE deletedAtEpochMs IS NULL AND scheduleState IN ('UNSCHEDULED', 'SCHEDULED') AND triggerAtEpochMs > :now ORDER BY triggerAtEpochMs ASC")
+    suspend fun getFuture(now: Long): List<ReminderEntity>
 }
 
 @Dao
