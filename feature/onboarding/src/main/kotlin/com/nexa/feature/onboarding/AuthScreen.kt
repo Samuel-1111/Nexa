@@ -76,7 +76,7 @@ fun AuthScreen(
 
             Spacer(Modifier.height(18.dp))
             Button(
-                onClick = { viewModel.requestOtp(email, onOtpRequested) },
+                onClick = { viewModel.requestOtp(email, createAccount, onOtpRequested) },
                 enabled = !busy && email.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(17.dp),
