@@ -19,7 +19,10 @@ import com.nexa.core.designsystem.NexaColors
 import com.nexa.core.model.Priority
 
 @Composable
-fun TodayRoute(viewModel: TodayViewModel = hiltViewModel()) {
+fun TodayRoute(
+    onOpenAssistant: () -> Unit = {},
+    viewModel: TodayViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsState()
     val displayName by viewModel.displayName.collectAsState()
     Scaffold { padding ->
@@ -69,7 +72,7 @@ fun TodayRoute(viewModel: TodayViewModel = hiltViewModel()) {
                                     OverviewCard("Tasks", data.tasks.size, Icons.Default.CheckCircle, NexaColors.TaskGreenBg)
                                     OverviewCard("Reminders", data.reminders.size, Icons.Default.Notifications, NexaColors.ReminderOrangeBg)
                                     OverviewCard("Event", 0, Icons.Default.CalendarMonth, NexaColors.EventBlueBg)
-                                    OverviewCard("Notes", 0, Icons.Default.Note, NexaColors.NoteVioletBg)
+                                    OverviewCard("Notes", data.noteCount, Icons.Default.Note, NexaColors.NoteVioletBg)
                                 }
                             }
                         }
@@ -104,7 +107,7 @@ fun TodayRoute(viewModel: TodayViewModel = hiltViewModel()) {
                     }
                     item {
                         Button(
-                            onClick = { viewModel.addQuickTask("New task") },
+                            onClick = onOpenAssistant,
                             modifier = Modifier.fillMaxWidth().height(64.dp),
                             shape = RoundedCornerShape(32.dp),
                         ) {
