@@ -9,7 +9,7 @@ enum class SyncState { LOCAL_ONLY, PENDING, SYNCED, CONFLICT, ERROR }
 enum class ReminderScheduleState { UNSCHEDULED, SCHEDULED, DELIVERED, CANCELED, ERROR }
 enum class ReminderTimeSemantics { FIXED_INSTANT, FLOATING_LOCAL }
 enum class ReminderPrecision { STANDARD, EXACT_IF_ALLOWED }
-enum class NoteSource { TEXT, VOICE_TRANSCRIPT }
+enum class NoteSource { TEXT, VOICE_TRANSCRIPT, AI_GENERATED }
 // Must stay in lockstep with the `memories.category` check constraint in
 // supabase/migrations — this is the sync contract between Room and Postgres.
 enum class MemoryCategory { PREFERENCE, PERSON, GOAL, ROUTINE, IMPORTANT_DATE, WORK, SCHOOL, WRITING_STYLE, OTHER }
