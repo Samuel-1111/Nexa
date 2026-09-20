@@ -91,6 +91,11 @@ fun NexaApp() {
             initialCreateAccount = authMode == "create",
             viewModel = authViewModel,
             onOtpRequested = { email -> otpEmail = email; otpCreateAccount = authMode == "create" },
+            onBack = {
+                authMode = null
+                prefs.edit().remove("landing_seen").apply()
+                landingVisible = true
+            },
         )
     }
 }
