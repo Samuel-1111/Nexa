@@ -28,6 +28,7 @@ class VoiceCaptureController {
     private var recorder: AudioRecord? = null
     private var recordingJob: Job? = null
     @Volatile private var stopRequested = false
+    @Volatile private var discardRequested = false
 
     private val sampleRate = 16_000
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
@@ -43,6 +44,7 @@ class VoiceCaptureController {
         }
 
         stopRequested = false
+        discardRequested = false
         try {
             val created = AudioRecord(
                 MediaRecorder.AudioSource.MIC,
@@ -70,7 +72,7 @@ class VoiceCaptureController {
                         else if (count < 0) break
                     }
                     val audio = wavBytes(pcm.toByteArray(), sampleRate)
-                    if (audio.isNotEmpty()) {
+                    if (!discardRequested && audio.isNotEmpty()) {
                         mutableState.value = VoiceCaptureState.Captured(
                             Base64.encodeToString(audio, Base64.NO_WRAP),
                         )
@@ -105,11 +107,14 @@ class VoiceCaptureController {
     }
 
     fun clear() {
+        discardRequested = true
         stopRequested = true
+        recorder?.let { runCatching { it.stop() } }
         mutableState.value = VoiceCaptureState.Idle
     }
 
     fun release() {
+        discardRequested = true
         stopRequested = true
         val active = recorder
         if (active != null) {
