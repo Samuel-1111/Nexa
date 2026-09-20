@@ -1,7 +1,6 @@
 package com.nexa.app.di
 
 import android.content.Context
-import androidx.room.Room
 import com.nexa.core.database.NexaDatabase
 import dagger.Module
 import dagger.Provides
@@ -15,7 +14,7 @@ import javax.inject.Singleton
 object DatabaseModule {
     @Provides @Singleton
     fun provideNexaDatabase(@ApplicationContext context: Context): NexaDatabase =
-        Room.databaseBuilder(context, NexaDatabase::class.java, "nexa.db").build()
+        NexaDatabase.getInstance(context)
 
     @Provides fun provideTaskDao(db: NexaDatabase) = db.taskDao()
     @Provides fun provideReminderDao(db: NexaDatabase) = db.reminderDao()
