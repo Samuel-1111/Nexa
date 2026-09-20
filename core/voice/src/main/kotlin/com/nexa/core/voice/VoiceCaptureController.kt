@@ -19,11 +19,7 @@ sealed interface VoiceCaptureState {
     data class Error(val message: String) : VoiceCaptureState
 }
 
-/**
- * Records short microphone clips locally and returns the bytes to the caller.
- * Raw audio is never persisted to disk. The caller decides whether to send it
- * to the authenticated Gemini gateway.
- */
+/** Short, memory-only microphone capture. Raw audio is never written to disk. */
 class VoiceCaptureController {
     private val mutableState = MutableStateFlow<VoiceCaptureState>(VoiceCaptureState.Idle)
     val state: StateFlow<VoiceCaptureState> = mutableState
@@ -31,9 +27,12 @@ class VoiceCaptureController {
     private val scope = CoroutineScope(Dispatchers.IO)
     private var recorder: AudioRecord? = null
     private var recordingJob: Job? = null
+    @Volatile private var stopRequested = false
+
     private val sampleRate = 16_000
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
     private val encoding = AudioFormat.ENCODING_PCM_16BIT
+    private val maxRecordingBytes = sampleRate * 2 * 60 // 60 seconds, mono 16-bit
 
     fun start() {
         if (recordingJob?.isActive == true) return
@@ -43,32 +42,47 @@ class VoiceCaptureController {
             return
         }
 
+        stopRequested = false
         try {
-            recorder = AudioRecord(
+            val created = AudioRecord(
                 MediaRecorder.AudioSource.MIC,
                 sampleRate,
                 channelConfig,
                 encoding,
                 maxOf(minBuffer * 2, 4096),
             )
-            recorder?.startRecording()
+            if (created.state != AudioRecord.STATE_INITIALIZED) {
+                created.release()
+                mutableState.value = VoiceCaptureState.Error("Microphone is unavailable")
+                return
+            }
+            recorder = created
+            created.startRecording()
             mutableState.value = VoiceCaptureState.Listening
 
             recordingJob = scope.launch {
                 val pcm = ByteArrayOutputStream()
                 val buffer = ByteArray(maxOf(minBuffer, 4096))
-                while (true) {
-                    val count = recorder?.read(buffer, 0, buffer.size) ?: break
-                    if (count > 0) pcm.write(buffer, 0, count)
-                    if (recordingJob?.isActive != true) break
-                }
-                val audio = wavBytes(pcm.toByteArray(), sampleRate)
-                if (audio.isNotEmpty()) {
-                    mutableState.value = VoiceCaptureState.Captured(
-                        Base64.encodeToString(audio, Base64.NO_WRAP),
-                    )
-                } else {
-                    mutableState.value = VoiceCaptureState.Error("No speech was captured")
+                try {
+                    while (!stopRequested && pcm.size() < maxRecordingBytes) {
+                        val count = created.read(buffer, 0, buffer.size)
+                        if (count > 0) pcm.write(buffer, 0, count)
+                        else if (count < 0) break
+                    }
+                    val audio = wavBytes(pcm.toByteArray(), sampleRate)
+                    if (audio.isNotEmpty()) {
+                        mutableState.value = VoiceCaptureState.Captured(
+                            Base64.encodeToString(audio, Base64.NO_WRAP),
+                        )
+                    } else {
+                        mutableState.value = VoiceCaptureState.Error("No speech was captured")
+                    }
+                } catch (_: Throwable) {
+                    if (!stopRequested) mutableState.value = VoiceCaptureState.Error("Unable to capture audio")
+                } finally {
+                    runCatching { created.stop() }
+                    runCatching { created.release() }
+                    if (recorder === created) recorder = null
                 }
             }
         } catch (_: SecurityException) {
@@ -81,16 +95,31 @@ class VoiceCaptureController {
     }
 
     fun stop() {
-        recordingJob?.cancel()
-        recordingJob = null
-        try { recorder?.stop() } catch (_: Throwable) { }
-        recorder?.release()
-        recorder = null
+        stopRequested = true
+        val active = recorder
+        if (active != null) {
+            runCatching { active.stop() }
+        }
+        // Do not cancel the capture job here: it must finish packaging the
+        // captured PCM into WAV and emit Captured for the transcription flow.
     }
 
-    fun clear() { mutableState.value = VoiceCaptureState.Idle }
+    fun clear() {
+        stopRequested = true
+        mutableState.value = VoiceCaptureState.Idle
+    }
 
-    fun release() = stop()
+    fun release() {
+        stopRequested = true
+        val active = recorder
+        if (active != null) {
+            runCatching { active.stop() }
+            runCatching { active.release() }
+        }
+        recorder = null
+        recordingJob?.cancel()
+        recordingJob = null
+    }
 
     private fun wavBytes(pcm: ByteArray, rate: Int): ByteArray {
         if (pcm.isEmpty()) return ByteArray(0)
