@@ -192,7 +192,7 @@ private fun AuthenticatedApp(authViewModel: AuthViewModel) {
             startDestination = TopLevelDestination.Today.route,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
-            composable(TopLevelDestination.Today.route) { TodayRoute() }
+            composable(TopLevelDestination.Today.route) { TodayRoute(onOpenAssistant = { navController.navigate(TopLevelDestination.Assistant.route) }) }
             composable(TopLevelDestination.Assistant.route) { AssistantScreen() }
             composable(TopLevelDestination.Organizer.route) { OrganizerScreen() }
             composable(TopLevelDestination.Settings.route) {
