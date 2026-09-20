@@ -235,16 +235,16 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             continue
                         }
                         supabase.postgrest.from("tasks").upsert(kotlinx.serialization.json.buildJsonObject {
-                            put("id", JsonPrimitive(JsonPrimitive(entity.id)))
-                            put("owner_id", JsonPrimitive(JsonPrimitive(userId)))
-                            put("title", JsonPrimitive(JsonPrimitive(entity.title)))
-                            put("body", JsonPrimitive(JsonPrimitive(entity.body)))
-                            put("status", JsonPrimitive(JsonPrimitive(entity.status)))
-                            put("priority", JsonPrimitive(JsonPrimitive(entity.priority)))
+                            put("id", JsonPrimitive(entity.id))
+                            put("owner_id", JsonPrimitive(userId))
+                            put("title", JsonPrimitive(entity.title))
+                            put("body", JsonPrimitive(entity.body))
+                            put("status", JsonPrimitive(entity.status))
+                            put("priority", JsonPrimitive(entity.priority))
                             entity.dueAtEpochMs?.let { put("due_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
-                            entity.dueTimezoneId?.let { put("due_timezone", JsonPrimitive(JsonPrimitive(it))) }
+                            entity.dueTimezoneId?.let { put("due_timezone", JsonPrimitive(it)) }
                             entity.completedAtEpochMs?.let { put("completed_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
-                            put("server_version", maxOf(1L, entity.serverVersion))
+                            put("server_version", JsonPrimitive(maxOf(1L, entity.serverVersion)))
                             put("created_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
                             put("updated_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
                             entity.deletedAtEpochMs?.let { put("deleted_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
@@ -258,15 +258,15 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             continue
                         }
                         supabase.postgrest.from("reminders").upsert(kotlinx.serialization.json.buildJsonObject {
-                            put("id", JsonPrimitive(JsonPrimitive(entity.id)))
-                            put("owner_id", JsonPrimitive(JsonPrimitive(userId)))
-                            entity.taskId?.let { put("task_id", JsonPrimitive(JsonPrimitive(it))) }
-                            put("title", JsonPrimitive(JsonPrimitive(entity.title)))
-                            put("body", JsonPrimitive(JsonPrimitive(entity.body)))
+                            put("id", JsonPrimitive(entity.id))
+                            put("owner_id", JsonPrimitive(userId))
+                            entity.taskId?.let { put("task_id", JsonPrimitive(it)) }
+                            put("title", JsonPrimitive(entity.title))
+                            put("body", JsonPrimitive(entity.body))
                             put("trigger_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.triggerAtEpochMs).toString())))
-                            put("timezone", JsonPrimitive(JsonPrimitive(entity.timezoneId)))
-                            put("schedule_state", JsonPrimitive(JsonPrimitive(entity.scheduleState)))
-                            put("server_version", maxOf(1L, entity.serverVersion))
+                            put("timezone", JsonPrimitive(entity.timezoneId))
+                            put("schedule_state", JsonPrimitive(entity.scheduleState))
+                            put("server_version", JsonPrimitive(maxOf(1L, entity.serverVersion)))
                             put("created_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
                             put("updated_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
                             entity.deletedAtEpochMs?.let { put("deleted_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
@@ -280,12 +280,12 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             continue
                         }
                         supabase.postgrest.from("notes").upsert(kotlinx.serialization.json.buildJsonObject {
-                            put("id", JsonPrimitive(JsonPrimitive(entity.id)))
-                            put("owner_id", JsonPrimitive(JsonPrimitive(userId)))
-                            put("title", JsonPrimitive(JsonPrimitive(entity.title)))
-                            put("body", JsonPrimitive(JsonPrimitive(entity.body)))
-                            put("source", JsonPrimitive(JsonPrimitive(entity.source)))
-                            put("server_version", maxOf(1L, entity.serverVersion))
+                            put("id", JsonPrimitive(entity.id))
+                            put("owner_id", JsonPrimitive(userId))
+                            put("title", JsonPrimitive(entity.title))
+                            put("body", JsonPrimitive(entity.body))
+                            put("source", JsonPrimitive(entity.source))
+                            put("server_version", JsonPrimitive(maxOf(1L, entity.serverVersion)))
                             put("created_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
                             put("updated_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
                             entity.deletedAtEpochMs?.let { put("deleted_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
@@ -299,15 +299,15 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             continue
                         }
                         supabase.postgrest.from("memories").upsert(kotlinx.serialization.json.buildJsonObject {
-                            put("id", JsonPrimitive(JsonPrimitive(entity.id)))
-                            put("owner_id", JsonPrimitive(JsonPrimitive(userId)))
-                            put("content", JsonPrimitive(JsonPrimitive(entity.content)))
-                            put("category", JsonPrimitive(JsonPrimitive(entity.category)))
-                            put("status", JsonPrimitive(JsonPrimitive(entity.status)))
-                            put("source_type", JsonPrimitive(JsonPrimitive(entity.sourceType)))
-                            entity.sourceEntityId?.let { put("source_entity_id", JsonPrimitive(JsonPrimitive(it))) }
+                            put("id", JsonPrimitive(entity.id))
+                            put("owner_id", JsonPrimitive(userId))
+                            put("content", JsonPrimitive(entity.content))
+                            put("category", JsonPrimitive(entity.category))
+                            put("status", JsonPrimitive(entity.status))
+                            put("source_type", JsonPrimitive(entity.sourceType))
+                            entity.sourceEntityId?.let { put("source_entity_id", JsonPrimitive(it)) }
                             entity.consentedAtEpochMs?.let { put("consented_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
-                            put("server_version", maxOf(1L, entity.serverVersion))
+                            put("server_version", JsonPrimitive(maxOf(1L, entity.serverVersion)))
                             put("created_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
                             put("updated_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
                             entity.deletedAtEpochMs?.let { put("deleted_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
