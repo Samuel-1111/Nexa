@@ -44,6 +44,7 @@ fun NexaApp() {
     var landingVisible by rememberSaveable { mutableStateOf(!prefs.getBoolean("landing_seen", false)) }
     var authMode by rememberSaveable { mutableStateOf<String?>(null) }
     var otpEmail by rememberSaveable { mutableStateOf<String?>(null) }
+    var otpCreateAccount by rememberSaveable { mutableStateOf(true) }
 
     val authViewModel: AuthViewModel = hiltViewModel()
     val sessionStatus by authViewModel.sessionStatus.collectAsState(initial = SessionStatus.Initializing)
@@ -71,6 +72,7 @@ fun NexaApp() {
     if (pendingOtpEmail != null) {
         OtpScreen(
             email = pendingOtpEmail,
+            createAccount = otpCreateAccount,
             viewModel = authViewModel,
             onBack = { otpEmail = null },
             onVerified = { otpEmail = null },
@@ -88,7 +90,7 @@ fun NexaApp() {
         is SessionStatus.NotAuthenticated -> AuthScreen(
             initialCreateAccount = authMode == "create",
             viewModel = authViewModel,
-            onOtpRequested = { otpEmail = it },
+            onOtpRequested = { email -> otpEmail = email; otpCreateAccount = authMode == "create" },
         )
     }
 }
