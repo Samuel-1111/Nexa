@@ -31,7 +31,6 @@ class BootReceiver : BroadcastReceiver() {
                         alarms.setAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, row.triggerAtEpochMs, pi)
                     }
                 }
-                db.close()
             } finally {
                 pending.finish()
             }
