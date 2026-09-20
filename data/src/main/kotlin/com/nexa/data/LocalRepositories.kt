@@ -17,6 +17,9 @@ import com.nexa.core.model.ReminderScheduleState
 import com.nexa.core.model.Task
 import com.nexa.core.model.TaskStatus
 import com.nexa.core.notifications.ReminderScheduler
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import com.nexa.domain.NoteRepository
 import com.nexa.domain.ReminderRepository
 import com.nexa.domain.TaskRepository
@@ -89,10 +92,126 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
     @dagger.assisted.Assisted workerParams: androidx.work.WorkerParameters,
     private val database: NexaDatabase,
     private val supabase: io.github.jan.supabase.SupabaseClient,
+    private val reminderScheduler: ReminderScheduler,
 ) : androidx.work.CoroutineWorker(appContext, workerParams) {
+
+    private suspend fun pullRemoteData(userId: String) {
+        val remoteTasks = supabase.postgrest.from("tasks").select { filter { eq("owner_id", userId) } }.decodeList<JsonObject>()
+        for (row in remoteTasks) {
+            val id = row.string("id") ?: continue
+            database.taskDao().upsert(
+                TaskEntity(
+                    id = id,
+                    ownerId = userId,
+                    title = row.string("title").orEmpty(),
+                    body = row.string("body"),
+                    status = row.string("status") ?: "OPEN",
+                    priority = row.string("priority") ?: "NONE",
+                    dueAtEpochMs = row.instant("due_at"),
+                    dueTimezoneId = row.string("due_timezone"),
+                    completedAtEpochMs = row.instant("completed_at"),
+                    createdAtEpochMs = row.instant("created_at") ?: System.currentTimeMillis(),
+                    updatedAtEpochMs = row.instant("updated_at") ?: System.currentTimeMillis(),
+                    deletedAtEpochMs = row.instant("deleted_at"),
+                    serverVersion = row.long("server_version") ?: 1L,
+                    syncState = "SYNCED",
+                ),
+            )
+        }
+
+        val remoteReminders = supabase.postgrest.from("reminders").select { filter { eq("owner_id", userId) } }.decodeList<JsonObject>()
+        val now = System.currentTimeMillis()
+        for (row in remoteReminders) {
+            val id = row.string("id") ?: continue
+            val trigger = row.instant("trigger_at") ?: continue
+            val scheduleState = row.string("schedule_state") ?: "UNSCHEDULED"
+            val reminder = com.nexa.core.model.Reminder(
+                EntityId(id),
+                row.string("task_id")?.let(::EntityId),
+                row.string("title").orEmpty(),
+                row.string("body"),
+                Instant.ofEpochMilli(trigger),
+                row.string("timezone") ?: "UTC",
+                ReminderScheduleState.valueOf(scheduleState),
+                ReminderPrecision.STANDARD,
+            )
+            database.reminderDao().upsert(
+                ReminderEntity(
+                    id = id,
+                    ownerId = userId,
+                    taskId = row.string("task_id"),
+                    title = row.string("title").orEmpty(),
+                    body = row.string("body"),
+                    triggerAtEpochMs = trigger,
+                    timezoneId = row.string("timezone") ?: "UTC",
+                    timeSemantics = "FIXED_INSTANT",
+                    deliveryPrecision = "STANDARD",
+                    notificationRequestCode = id.hashCode(),
+                    scheduleState = if (trigger > now && scheduleState != "CANCELED" && scheduleState != "DELIVERED") "SCHEDULED" else scheduleState,
+                    deliveredAtEpochMs = row.instant("delivered_at"),
+                    createdAtEpochMs = row.instant("created_at") ?: now,
+                    updatedAtEpochMs = row.instant("updated_at") ?: now,
+                    deletedAtEpochMs = row.instant("deleted_at"),
+                    serverVersion = row.long("server_version") ?: 1L,
+                    syncState = "SYNCED",
+                ),
+            )
+            if (trigger > now && scheduleState != "CANCELED" && scheduleState != "DELIVERED") reminderScheduler.schedule(reminder)
+        }
+
+        val remoteNotes = supabase.postgrest.from("notes").select { filter { eq("owner_id", userId) } }.decodeList<JsonObject>()
+        for (row in remoteNotes) {
+            val id = row.string("id") ?: continue
+            database.noteDao().upsert(
+                NoteEntity(
+                    id = id,
+                    ownerId = userId,
+                    title = row.string("title"),
+                    body = row.string("body").orEmpty(),
+                    source = row.string("source") ?: "TEXT",
+                    createdAtEpochMs = row.instant("created_at") ?: now,
+                    updatedAtEpochMs = row.instant("updated_at") ?: now,
+                    deletedAtEpochMs = row.instant("deleted_at"),
+                    serverVersion = row.long("server_version") ?: 1L,
+                    syncState = "SYNCED",
+                ),
+            )
+        }
+
+        val remoteMemories = supabase.postgrest.from("memories").select { filter { eq("owner_id", userId) } }.decodeList<JsonObject>()
+        for (row in remoteMemories) {
+            val id = row.string("id") ?: continue
+            database.memoryDao().upsert(
+                com.nexa.core.database.MemoryEntity(
+                    id = id,
+                    ownerId = userId,
+                    content = row.string("content").orEmpty(),
+                    category = row.string("category") ?: "OTHER",
+                    status = row.string("status") ?: "SUGGESTED",
+                    sourceType = row.string("source_type") ?: "SYNC",
+                    sourceEntityId = row.string("source_entity_id"),
+                    consentedAtEpochMs = row.instant("consented_at"),
+                    createdAtEpochMs = row.instant("created_at") ?: now,
+                    updatedAtEpochMs = row.instant("updated_at") ?: now,
+                    deletedAtEpochMs = row.instant("deleted_at"),
+                    serverVersion = row.long("server_version") ?: 1L,
+                    syncState = "SYNCED",
+                ),
+            )
+        }
+    }
+
+    private fun JsonObject.string(name: String): String? = this[name]?.jsonPrimitive?.contentOrNull
+    private fun JsonObject.long(name: String): Long? = string(name)?.toLongOrNull()
+    private fun JsonObject.instant(name: String): Long? = string(name)?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
 
     override suspend fun doWork(): Result {
         val userId = supabase.auth.currentUserOrNull()?.id ?: return Result.retry()
+        try {
+            pullRemoteData(userId)
+        } catch (_: Exception) {
+            return Result.retry()
+        }
         val pending = database.outboxDao().pending(System.currentTimeMillis())
         if (pending.isEmpty()) return Result.success()
 
