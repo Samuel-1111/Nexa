@@ -208,7 +208,6 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
     override suspend fun doWork(): Result {
         val userId = supabase.auth.currentUserOrNull()?.id ?: return Result.retry()
         val pending = database.outboxDao().pending(System.currentTimeMillis())
-        if (pending.isEmpty()) return Result.success()
 
         var hadFailure = false
         for (operation in pending) {
