@@ -18,6 +18,7 @@ import com.nexa.core.model.Task
 import com.nexa.core.model.TaskStatus
 import com.nexa.core.notifications.ReminderScheduler
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import com.nexa.domain.NoteRepository
@@ -234,19 +235,19 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             continue
                         }
                         supabase.postgrest.from("tasks").upsert(kotlinx.serialization.json.buildJsonObject {
-                            put("id", entity.id)
-                            put("owner_id", userId)
-                            put("title", entity.title)
-                            put("body", entity.body)
-                            put("status", entity.status)
-                            put("priority", entity.priority)
-                            entity.dueAtEpochMs?.let { put("due_at", java.time.Instant.ofEpochMilli(it).toString()) }
-                            entity.dueTimezoneId?.let { put("due_timezone", it) }
-                            entity.completedAtEpochMs?.let { put("completed_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                            put("id", JsonPrimitive(JsonPrimitive(entity.id)))
+                            put("owner_id", JsonPrimitive(JsonPrimitive(userId)))
+                            put("title", JsonPrimitive(JsonPrimitive(entity.title)))
+                            put("body", JsonPrimitive(JsonPrimitive(entity.body)))
+                            put("status", JsonPrimitive(JsonPrimitive(entity.status)))
+                            put("priority", JsonPrimitive(JsonPrimitive(entity.priority)))
+                            entity.dueAtEpochMs?.let { put("due_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
+                            entity.dueTimezoneId?.let { put("due_timezone", JsonPrimitive(JsonPrimitive(it))) }
+                            entity.completedAtEpochMs?.let { put("completed_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
                             put("server_version", maxOf(1L, entity.serverVersion))
-                            put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
-                            put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
-                            entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                            put("created_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
+                            put("updated_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
+                            entity.deletedAtEpochMs?.let { put("deleted_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
                         })
                         database.taskDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
                     }
@@ -257,18 +258,18 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             continue
                         }
                         supabase.postgrest.from("reminders").upsert(kotlinx.serialization.json.buildJsonObject {
-                            put("id", entity.id)
-                            put("owner_id", userId)
-                            entity.taskId?.let { put("task_id", it) }
-                            put("title", entity.title)
-                            put("body", entity.body)
-                            put("trigger_at", java.time.Instant.ofEpochMilli(entity.triggerAtEpochMs).toString())
-                            put("timezone", entity.timezoneId)
-                            put("schedule_state", entity.scheduleState)
+                            put("id", JsonPrimitive(JsonPrimitive(entity.id)))
+                            put("owner_id", JsonPrimitive(JsonPrimitive(userId)))
+                            entity.taskId?.let { put("task_id", JsonPrimitive(JsonPrimitive(it))) }
+                            put("title", JsonPrimitive(JsonPrimitive(entity.title)))
+                            put("body", JsonPrimitive(JsonPrimitive(entity.body)))
+                            put("trigger_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.triggerAtEpochMs).toString())))
+                            put("timezone", JsonPrimitive(JsonPrimitive(entity.timezoneId)))
+                            put("schedule_state", JsonPrimitive(JsonPrimitive(entity.scheduleState)))
                             put("server_version", maxOf(1L, entity.serverVersion))
-                            put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
-                            put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
-                            entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                            put("created_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
+                            put("updated_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
+                            entity.deletedAtEpochMs?.let { put("deleted_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
                         })
                         database.reminderDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
                     }
@@ -279,15 +280,15 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             continue
                         }
                         supabase.postgrest.from("notes").upsert(kotlinx.serialization.json.buildJsonObject {
-                            put("id", entity.id)
-                            put("owner_id", userId)
-                            put("title", entity.title)
-                            put("body", entity.body)
-                            put("source", entity.source)
+                            put("id", JsonPrimitive(JsonPrimitive(entity.id)))
+                            put("owner_id", JsonPrimitive(JsonPrimitive(userId)))
+                            put("title", JsonPrimitive(JsonPrimitive(entity.title)))
+                            put("body", JsonPrimitive(JsonPrimitive(entity.body)))
+                            put("source", JsonPrimitive(JsonPrimitive(entity.source)))
                             put("server_version", maxOf(1L, entity.serverVersion))
-                            put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
-                            put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
-                            entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                            put("created_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
+                            put("updated_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
+                            entity.deletedAtEpochMs?.let { put("deleted_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
                         })
                         database.noteDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
                     }
@@ -298,18 +299,18 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             continue
                         }
                         supabase.postgrest.from("memories").upsert(kotlinx.serialization.json.buildJsonObject {
-                            put("id", entity.id)
-                            put("owner_id", userId)
-                            put("content", entity.content)
-                            put("category", entity.category)
-                            put("status", entity.status)
-                            put("source_type", entity.sourceType)
-                            entity.sourceEntityId?.let { put("source_entity_id", it) }
-                            entity.consentedAtEpochMs?.let { put("consented_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                            put("id", JsonPrimitive(JsonPrimitive(entity.id)))
+                            put("owner_id", JsonPrimitive(JsonPrimitive(userId)))
+                            put("content", JsonPrimitive(JsonPrimitive(entity.content)))
+                            put("category", JsonPrimitive(JsonPrimitive(entity.category)))
+                            put("status", JsonPrimitive(JsonPrimitive(entity.status)))
+                            put("source_type", JsonPrimitive(JsonPrimitive(entity.sourceType)))
+                            entity.sourceEntityId?.let { put("source_entity_id", JsonPrimitive(JsonPrimitive(it))) }
+                            entity.consentedAtEpochMs?.let { put("consented_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
                             put("server_version", maxOf(1L, entity.serverVersion))
-                            put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
-                            put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
-                            entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                            put("created_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
+                            put("updated_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
+                            entity.deletedAtEpochMs?.let { put("deleted_at", JsonPrimitive(JsonPrimitive(java.time.Instant.ofEpochMilli(it).toString()))) }
                         })
                         database.memoryDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
                     }
