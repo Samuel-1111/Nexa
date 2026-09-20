@@ -1,73 +1,88 @@
 # NEXA — Setup
 
-## 1. Open in Android Studio
+## 1. Android app
 
-1. Set `sdk.dir` in `local.properties` to your actual Android SDK path (the
-   Supabase URL/key lines are already filled in — see below).
-2. Open the project root in Android Studio (Ladybug/2024.2+ recommended —
-   AGP 8.7.3 / Kotlin 2.0.21).
-3. Let Gradle sync. First sync will download dependencies from `google()` and
-   `mavenCentral()` — this could not be verified from the sandbox this project
-   was built in (no network access to those hosts there), so **this sync is
-   the first real compile check** — see "What's unverified" below.
-4. Run on a device or emulator with API 26+.
+1. Open the repository root in Android Studio.
+2. Use JDK 17 and Android SDK 35.
+3. The project targets API 35 and supports API 26+.
+4. The GitHub workflow is configured to build a debug APK with Gradle 8.9.
 
-## 2. Supabase backend — already live
+The repository's Kotlin/Gradle code has been reviewed, but a successful Android build has **not** been independently observed from this environment because the sandbox cannot access the required Android/Maven dependencies. Treat the first successful GitHub Actions or Android Studio build as the authoritative compile verification.
 
-A real Supabase project was created for NEXA during this session:
+## 2. Supabase backend — live
 
-- Project: `nexa` (ref `blunbsmuohzregwubdex`, region `eu-west-1`)
-- 14 tables created, all with RLS enabled: `profiles`, `preferences`, `tasks`,
-  `reminders`, `notes`, `memories`, `goals`, `goal_milestones`,
-  `journal_entries`, `calendar_events`, `chats`, `chat_messages`,
-  `subscriptions`, `payments`.
-- Security advisor scan: **0 findings** (after fixing the function
-  `search_path` and `SECURITY DEFINER` exposure it initially flagged).
-- A trigger auto-creates a `profiles` + `preferences` row on signup.
-- Two Edge Functions deployed and active: `ai-gateway`, `remita-webhook`.
-- `local.properties` already has this project's URL and anon (public) key —
-  no action needed for local dev to talk to a real backend.
+Project ref: `blunbsmuohzregwubdex`.
 
-## 3. CONFIGURATION REQUIRED
+Current live database state:
+- 17 public tables are present and RLS is enabled on all 17.
+- Owner-scoped policies are enabled for user data.
+- Auth signup triggers create `profiles`, `preferences`, and the trial subscription.
+- Active Edge Functions: `ai-gateway` (JWT protected), `remita-webhook` (webhook endpoint), and `automation-runner` (called by the scheduled job).
+- Scheduled jobs include the automation runner every minute and expired-trial processing hourly.
 
-Nothing above needs a key from you. These do, and NEXA fails closed (clear
-error, not silent fake behavior) until you provide them:
+The Supabase security advisor currently reports two warnings:
+- `pg_net` is installed in `public`.
+- Leaked-password protection is disabled.
 
-### Gemini API key
-- **Purpose:** powers `ai-gateway` (AI chat, tool calling, memory suggestions).
-- **Where to get it:** https://aistudio.google.com/apikey
-- **Where it goes:** Supabase project secret, NOT Android. Run:
-  `supabase secrets set GEMINI_API_KEY=... --project-ref blunbsmuohzregwubdex`
-  (or set it in the Supabase dashboard → Edge Functions → Secrets).
-- Until set, `ai-gateway` returns `503 configuration_required` rather than
-  pretending to work.
+These were left unchanged because changing either without confirming the project's current operational configuration could break the existing scheduler/auth setup.
 
-### Remita merchant credentials
-- **Purpose:** powers the subscription payment flow (`remita-webhook`).
-- **Where to get it:** your Remita merchant dashboard (Essential/Pro/
-  Executive plans at ₦1,000/₦3,000/₦5,000 per month are already modeled in
-  the `subscriptions` table).
-- **Where it goes:** Supabase project secrets — `REMITA_MERCHANT_ID`,
-  `REMITA_API_KEY`, and whatever webhook secret Remita issues for your
-  integration type. Same `supabase secrets set` mechanism as above.
-- The webhook's signature check in `remita-webhook/index.ts` uses a
-  placeholder hash recipe — confirm the exact field order against Remita's
-  current docs for your integration (Payment API vs RRR flow) before going
-  live; it's flagged in a comment in that file.
-- The payment-initiation call (NEXA → Remita, to start a checkout) isn't
-  built yet — only the verification webhook. That's the next piece once you
-  confirm which Remita flow you're integrating.
+## 3. Authentication
 
-### Google OAuth (optional, for "Continue with Google")
-- **Where to get it:** Google Cloud Console → OAuth client (Android type,
-  needs your release AND debug SHA-1 fingerprints).
-- **Where it goes:** configured in Supabase Auth → Providers → Google
-  (client ID + secret), not in the Android app.
+NEXA uses email OTP with Supabase Auth. The Android flow:
+1. User chooses **Create account** or **Log in**.
+2. Create account sends OTP with account creation enabled.
+3. Log in sends OTP with account creation disabled.
+4. The user enters the 6-digit code.
+5. Incorrect/expired codes are converted to human-readable messages.
 
-## 4. What's unverified
+Supabase's current Kotlin documentation confirms `signInWith(OTP)` supports email OTP and that account creation can be disabled for login. See the Supabase Kotlin OTP documentation.
 
-This project was built in a sandbox with no Android SDK and no network
-access to Google's Maven repositories, so none of the Kotlin/Gradle code
-above has been compiled or run. It's written to match the existing project's
-conventions exactly, but your first `Gradle sync` / build in Android Studio
-is the real test — paste any errors back and they can be fixed directly.
+For OTP emails, the Supabase Magic Link/OTP template must contain `{{ .Token }}` when you want a six-digit code rather than a magic-link URL.
+
+## 4. AI
+
+`ai-gateway` keeps the Gemini API key server-side. The Android app sends the authenticated Supabase access token to the Edge Function; the Gemini secret is never placed in the APK.
+
+The gateway now:
+- validates requests before consuming AI quota;
+- rejects oversized voice payloads before consuming quota;
+- uses the authenticated user identity;
+- enforces server-side subscription/usage limits;
+- filters Today tasks, reminders and events using the user's timezone;
+- supports AI tool calls for tasks, reminders, notes, memory suggestions and Today queries.
+
+The live `ai-gateway` is currently ACTIVE at version 8.
+
+## 5. Remita
+
+Remita merchant secrets must remain server-side. The repository contains the webhook verification/activation path, but **payment initiation is not yet production-ready** because the exact Remita integration product, merchant credentials and initiation schema have not been supplied.
+
+Do not add guessed Remita request/signature code. Remita documents multiple payment/collection products, so the exact flow must match the merchant account's enabled integration.
+
+## 6. Current billing catalogue
+
+The live database currently contains:
+- 3-Day Free Trial — 10 AI requests/month, 5 voice requests/month
+- Basic — ₦1,000/month, 100 AI requests/month, 40 voice requests/month
+- Pro — ₦3,000/month, 300 AI requests/month, 100 voice requests/month
+- Executive — ₦5,000/month, unlimited AI and voice requests
+
+These values are server-side and should be treated as authoritative.
+
+## 7. Important verification status
+
+Verified directly:
+- live Supabase project is healthy;
+- 17/17 public tables have RLS enabled;
+- current RLS policies are owner-scoped;
+- live Edge Functions are active;
+- `ai-gateway` was redeployed as version 8 after the latest hardening changes;
+- the AI usage function responds correctly to a nonexistent subscription with `subscription_missing`;
+- GitHub contains the current Android/backend fixes.
+
+Not yet independently proven:
+- successful Android compilation on a real Android SDK;
+- installation and runtime on a physical device;
+- receipt of a real OTP email;
+- successful real Gemini request using the project's secret;
+- a real Remita payment, because merchant credentials/integration details are required.
