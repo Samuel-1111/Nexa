@@ -12,9 +12,9 @@ android {
     defaultConfig { minSdk = 26 }
 
     // NEXA_SUPABASE_URL / NEXA_SUPABASE_ANON_KEY may be overridden by local.properties
-    // (gitignored) or CI secrets, never hardcoded. The anon key is a PUBLIC key
-    // by Supabase's own design (safe to ship in a client, protected by RLS) --
-    // it is NOT the service-role key, which must never appear in this app.
+    // (gitignored) or CI secrets. The publishable client key is safe to ship in
+    // an Android client and is protected by Supabase RLS. The service-role key
+    // must never appear in this app.
     val localProps = Properties().apply {
         val f = rootProject.file("local.properties")
         if (f.exists()) f.inputStream().use { load(it) }
