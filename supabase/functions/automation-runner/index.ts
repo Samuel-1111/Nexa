@@ -7,6 +7,12 @@ const db = createClient(url, serviceKey);
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
+  const suppliedSecret = req.headers.get("x-nexa-cron-secret") ?? "";
+  const { data: expectedSecret, error: secretError } = await db.rpc("get_nexa_automation_secret");
+  if (secretError || !expectedSecret || suppliedSecret.length !== String(expectedSecret).length || !constantTimeEqual(suppliedSecret, String(expectedSecret))) {
+    return json({ error: "unauthorized" }, 401);
+  }
+
   const { data: rules, error } = await db
     .from("automation_rules")
     .select("*")
@@ -52,6 +58,13 @@ async function executeAction(rule: any) {
     const { error } = await db.from("notes").insert({ owner_id: rule.owner_id, title: action.title ?? rule.name, body: String(action.body ?? ""), source: "AI_GENERATED" });
     if (error) throw error;
   }
+}
+
+function constantTimeEqual(a: string, b: string) {
+  let diff = a.length ^ b.length;
+  const max = Math.max(a.length, b.length);
+  for (let i = 0; i < max; i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  return diff === 0;
 }
 
 function json(body: unknown, status = 200) {
