@@ -38,11 +38,16 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Write local.properties from secrets
+      - name: Write local.properties from optional CI secrets
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          echo "NEXA_SUPABASE_URL=${{ secrets.NEXA_SUPABASE_URL }}" >> local.properties
-          echo "NEXA_SUPABASE_ANON_KEY=${{ secrets.NEXA_SUPABASE_ANON_KEY }}" >> local.properties
+          if [ -n "${{ secrets.NEXA_SUPABASE_URL }}" ]; then echo "NEXA_SUPABASE_URL=${{ secrets.NEXA_SUPABASE_URL }}" >> local.properties; fi
+          if [ -n "${{ secrets.NEXA_SUPABASE_ANON_KEY }}" ]; then echo "NEXA_SUPABASE_ANON_KEY=${{ secrets.NEXA_SUPABASE_ANON_KEY }}" >> local.properties; fi
+
+      - name: Verify NEXA backend configuration
+        run: |
+          test -n "${{ secrets.NEXA_SUPABASE_URL }}" || echo "Using checked-in public Supabase URL fallback."
+          test -n "${{ secrets.NEXA_SUPABASE_ANON_KEY }}" || echo "Using checked-in public Supabase publishable-key fallback."
 
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
