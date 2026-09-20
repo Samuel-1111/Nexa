@@ -17,6 +17,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun OtpScreen(
     email: String,
+    createAccount: Boolean = true,
     viewModel: AuthViewModel = hiltViewModel(),
     onBack: () -> Unit = {},
     onVerified: () -> Unit = {},
@@ -81,12 +82,12 @@ fun OtpScreen(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFFFEBEE),
+                    color = if (it.startsWith("A new verification")) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
                 ) {
                     Text(
                         it,
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        color = Color(0xFFC62828),
+                        color = if (it.startsWith("A new verification")) Color(0xFF2E7D32) else Color(0xFFC62828),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -94,7 +95,7 @@ fun OtpScreen(
 
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
-                onClick = { viewModel.resendOtp(email) },
+                onClick = { viewModel.resendOtp(email, createAccount) },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) {
