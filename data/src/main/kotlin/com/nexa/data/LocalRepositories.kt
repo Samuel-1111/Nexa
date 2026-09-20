@@ -18,7 +18,9 @@ import com.nexa.core.model.Task
 import com.nexa.core.model.TaskStatus
 import com.nexa.core.notifications.ReminderScheduler
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.put
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import com.nexa.domain.NoteRepository
@@ -235,14 +237,14 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             continue
                         }
                         supabase.postgrest.from("tasks").upsert(kotlinx.serialization.json.buildJsonObject {
-                            put("id", Json.encodeToJsonElement(entity.id))
-                            put("owner_id", Json.encodeToJsonElement(userId))
-                            put("title", Json.encodeToJsonElement(entity.title))
-                            put("body", Json.encodeToJsonElement(entity.body))
-                            put("status", Json.encodeToJsonElement(entity.status))
-                            put("priority", Json.encodeToJsonElement(entity.priority))
+                            put("id", entity.id)
+                            put("owner_id", userId)
+                            put("title", entity.title)
+                            put("body", entity.body)
+                            put("status", entity.status)
+                            put("priority", entity.priority)
                             entity.dueAtEpochMs?.let { put("due_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(it).toString()))) }
-                            entity.dueTimezoneId?.let { put("due_timezone", Json.encodeToJsonElement(it)) }
+                            entity.dueTimezoneId?.let { put("due_timezone", it) }
                             entity.completedAtEpochMs?.let { put("completed_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(it).toString()))) }
                             put("server_version", Json.encodeToJsonElement(maxOf(1L, entity.serverVersion)))
                             put("created_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
@@ -258,14 +260,14 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             continue
                         }
                         supabase.postgrest.from("reminders").upsert(kotlinx.serialization.json.buildJsonObject {
-                            put("id", Json.encodeToJsonElement(entity.id))
-                            put("owner_id", Json.encodeToJsonElement(userId))
-                            entity.taskId?.let { put("task_id", Json.encodeToJsonElement(it)) }
-                            put("title", Json.encodeToJsonElement(entity.title))
-                            put("body", Json.encodeToJsonElement(entity.body))
+                            put("id", entity.id)
+                            put("owner_id", userId)
+                            entity.taskId?.let { put("task_id", it) }
+                            put("title", entity.title)
+                            put("body", entity.body)
                             put("trigger_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.triggerAtEpochMs).toString())))
-                            put("timezone", Json.encodeToJsonElement(entity.timezoneId))
-                            put("schedule_state", Json.encodeToJsonElement(entity.scheduleState))
+                            put("timezone", entity.timezoneId)
+                            put("schedule_state", entity.scheduleState)
                             put("server_version", Json.encodeToJsonElement(maxOf(1L, entity.serverVersion)))
                             put("created_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
                             put("updated_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
@@ -280,11 +282,11 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             continue
                         }
                         supabase.postgrest.from("notes").upsert(kotlinx.serialization.json.buildJsonObject {
-                            put("id", Json.encodeToJsonElement(entity.id))
-                            put("owner_id", Json.encodeToJsonElement(userId))
-                            put("title", Json.encodeToJsonElement(entity.title))
-                            put("body", Json.encodeToJsonElement(entity.body))
-                            put("source", Json.encodeToJsonElement(entity.source))
+                            put("id", entity.id)
+                            put("owner_id", userId)
+                            put("title", entity.title)
+                            put("body", entity.body)
+                            put("source", entity.source)
                             put("server_version", Json.encodeToJsonElement(maxOf(1L, entity.serverVersion)))
                             put("created_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
                             put("updated_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())))
@@ -299,13 +301,13 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             continue
                         }
                         supabase.postgrest.from("memories").upsert(kotlinx.serialization.json.buildJsonObject {
-                            put("id", Json.encodeToJsonElement(entity.id))
-                            put("owner_id", Json.encodeToJsonElement(userId))
-                            put("content", Json.encodeToJsonElement(entity.content))
-                            put("category", Json.encodeToJsonElement(entity.category))
-                            put("status", Json.encodeToJsonElement(entity.status))
-                            put("source_type", Json.encodeToJsonElement(entity.sourceType))
-                            entity.sourceEntityId?.let { put("source_entity_id", Json.encodeToJsonElement(it)) }
+                            put("id", entity.id)
+                            put("owner_id", userId)
+                            put("content", entity.content)
+                            put("category", entity.category)
+                            put("status", entity.status)
+                            put("source_type", entity.sourceType)
+                            entity.sourceEntityId?.let { put("source_entity_id", it) }
                             entity.consentedAtEpochMs?.let { put("consented_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(it).toString()))) }
                             put("server_version", Json.encodeToJsonElement(maxOf(1L, entity.serverVersion)))
                             put("created_at", Json.encodeToJsonElement(Json.encodeToJsonElement(java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())))
