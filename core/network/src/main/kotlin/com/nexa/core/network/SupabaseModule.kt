@@ -53,9 +53,10 @@ class AuthRepository(private val client: SupabaseClient) {
         }
     }
 
-    suspend fun requestEmailOtp(email: String) {
+    suspend fun requestEmailOtp(email: String, createUser: Boolean = true) {
         client.auth.signInWith(OTP) {
             this.email = email
+            this.createUser = createUser
         }
     }
 
