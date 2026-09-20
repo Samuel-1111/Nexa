@@ -99,6 +99,8 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
         val remoteTasks = supabase.postgrest.from("tasks").select { filter { eq("owner_id", userId) } }.decodeList<JsonObject>()
         for (row in remoteTasks) {
             val id = row.string("id") ?: continue
+            val localTask = database.taskDao().get(id)
+            if (!shouldApplyRemote(localTask?.syncState)) continue
             database.taskDao().upsert(
                 TaskEntity(
                     id = id,
@@ -135,6 +137,8 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                 ReminderScheduleState.valueOf(scheduleState),
                 ReminderPrecision.STANDARD,
             )
+            val localReminder = database.reminderDao().get(id)
+            if (!shouldApplyRemote(localReminder?.syncState)) continue
             database.reminderDao().upsert(
                 ReminderEntity(
                     id = id,
@@ -162,6 +166,8 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
         val remoteNotes = supabase.postgrest.from("notes").select { filter { eq("owner_id", userId) } }.decodeList<JsonObject>()
         for (row in remoteNotes) {
             val id = row.string("id") ?: continue
+            val localNote = database.noteDao().get(id)
+            if (!shouldApplyRemote(localNote?.syncState)) continue
             database.noteDao().upsert(
                 NoteEntity(
                     id = id,
@@ -181,6 +187,8 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
         val remoteMemories = supabase.postgrest.from("memories").select { filter { eq("owner_id", userId) } }.decodeList<JsonObject>()
         for (row in remoteMemories) {
             val id = row.string("id") ?: continue
+            val localMemory = database.memoryDao().get(id)
+            if (!shouldApplyRemote(localMemory?.syncState)) continue
             database.memoryDao().upsert(
                 com.nexa.core.database.MemoryEntity(
                     id = id,
@@ -200,6 +208,12 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
             )
         }
     }
+
+    // Remote pulls may only replace records that are already synchronized.
+    // Pending/conflicted/error local changes stay local until their outbox
+    // operation succeeds, preventing a background pull from silently losing work.
+    private fun shouldApplyRemote(localSyncState: String?): Boolean =
+        localSyncState == null || localSyncState == "SYNCED"
 
     private fun JsonObject.string(name: String): String? = this[name]?.jsonPrimitive?.contentOrNull
     private fun JsonObject.long(name: String): Long? = string(name)?.toLongOrNull()
