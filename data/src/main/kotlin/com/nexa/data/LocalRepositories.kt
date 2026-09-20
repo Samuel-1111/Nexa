@@ -207,11 +207,6 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         val userId = supabase.auth.currentUserOrNull()?.id ?: return Result.retry()
-        try {
-            pullRemoteData(userId)
-        } catch (_: Exception) {
-            return Result.retry()
-        }
         val pending = database.outboxDao().pending(System.currentTimeMillis())
         if (pending.isEmpty()) return Result.success()
 
@@ -315,6 +310,12 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                 hadFailure = true
             }
         }
-        return if (hadFailure) Result.retry() else Result.success()
+        if (hadFailure) return Result.retry()
+        return try {
+            pullRemoteData(userId)
+            Result.success()
+        } catch (_: Exception) {
+            Result.retry()
+        }
     }
 }
