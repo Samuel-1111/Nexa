@@ -96,6 +96,7 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
         val pending = database.outboxDao().pending(System.currentTimeMillis())
         if (pending.isEmpty()) return Result.success()
 
+        var hadFailure = false
         for (operation in pending) {
             try {
                 when (operation.entityType) {
@@ -192,8 +193,9 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                 val now = System.currentTimeMillis()
                 val delay = (30_000L * (1L shl operation.attemptCount.coerceAtMost(5))).coerceAtMost(30 * 60_000L)
                 database.outboxDao().markRetry(operation.id, e.message?.take(240) ?: "sync_failed", now + delay, now)
+                hadFailure = true
             }
         }
-        return Result.success()
+        return if (hadFailure) Result.retry() else Result.success()
     }
 }
