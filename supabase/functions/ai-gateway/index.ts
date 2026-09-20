@@ -31,9 +31,9 @@ Deno.serve(async (req: Request) => {
   const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   if (body.audio_base64) {
+    if (body.audio_base64.length > 15_000_000) return json({ error: "audio_too_large" }, 413);
     const usage = await consumeUsage(db, userId, true);
     if (!usage.allowed) return quotaResponse(usage);
-    if (body.audio_base64.length > 15_000_000) return json({ error: "audio_too_large" }, 413);
     const response = await geminiGenerate([{ role: "user", parts: [{ text: "Transcribe exactly what the user said. Return only the spoken words with normal punctuation. Do not answer, execute, or add commentary." }, { inlineData: { mimeType: body.audio_mime_type || "audio/wav", data: body.audio_base64 } }] }]);
     if (!response.ok) return json({ error: "transcription_unavailable" }, 502);
     const result = await response.json();
@@ -162,16 +162,44 @@ async function executeTool(client: any, userId: string, name: string, args: Reco
       return error ? { ok: false, error: error.message } : { ok: true, suggested_memory: data };
     }
     case "query_today": {
+      const { data: profile } = await client.from("profiles").select("timezone").eq("id", userId).maybeSingle();
+      const timezone = profile?.timezone || "UTC";
+      const { start, end } = dayBounds(timezone);
       const [{ data: tasks }, { data: reminders }, { data: events }] = await Promise.all([
-        client.from("tasks").select("id,title,priority,due_at,status").eq("owner_id", userId).eq("status", "OPEN").is("deleted_at", null).order("due_at").limit(20),
-        client.from("reminders").select("id,title,trigger_at,timezone,schedule_state").eq("owner_id", userId).is("deleted_at", null).order("trigger_at").limit(20),
-        client.from("calendar_events").select("id,title,starts_at,ends_at,timezone").eq("owner_id", userId).is("deleted_at", null).order("starts_at").limit(20),
+        client.from("tasks").select("id,title,priority,due_at,status").eq("owner_id", userId).eq("status", "OPEN").is("deleted_at", null).gte("due_at", start).lt("due_at", end).order("due_at").limit(20),
+        client.from("reminders").select("id,title,trigger_at,timezone,schedule_state").eq("owner_id", userId).is("deleted_at", null).gte("trigger_at", start).lt("trigger_at", end).order("trigger_at").limit(20),
+        client.from("calendar_events").select("id,title,starts_at,ends_at,timezone").eq("owner_id", userId).is("deleted_at", null).lt("starts_at", end).gte("ends_at", start).order("starts_at").limit(20),
       ]);
-      return { ok: true, tasks: tasks ?? [], reminders: reminders ?? [], events: events ?? [] };
+      return { ok: true, timezone, tasks: tasks ?? [], reminders: reminders ?? [], events: events ?? [] };
     }
     default: return { ok: false, error: "Unknown tool." };
   }
 }
+function dayBounds(timezone: string) {
+  try {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" });
+    const parts = Object.fromEntries(formatter.formatToParts(now).filter((p) => p.type !== "literal").map((p) => [p.type, p.value]));
+    const date = `${parts.year}-${parts.month}-${parts.day}`;
+    const next = new Date(Date.parse(`${date}T00:00:00Z`) + 86400000);
+    const offsetAt = (utc: Date) => {
+      const local = new Intl.DateTimeFormat("en-US", { timeZone: timezone, hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(utc);
+      const p = Object.fromEntries(local.filter((x) => x.type !== "literal").map((x) => [x.type, x.value]));
+      const localAsUtc = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour) % 24, Number(p.minute), Number(p.second));
+      return localAsUtc - utc.getTime();
+    };
+    const startUtc = new Date(Date.parse(`${date}T00:00:00Z`) - offsetAt(new Date(Date.parse(`${date}T12:00:00Z`))));
+    const nextDate = next.toISOString().slice(0, 10);
+    const endUtc = new Date(Date.parse(`${nextDate}T00:00:00Z`) - offsetAt(new Date(Date.parse(`${nextDate}T12:00:00Z`))));
+    return { start: startUtc.toISOString(), end: endUtc.toISOString() };
+  } catch {
+    const start = new Date();
+    start.setUTCHours(0, 0, 0, 0);
+    const end = new Date(start.getTime() + 86400000);
+    return { start: start.toISOString(), end: end.toISOString() };
+  }
+}
+
 async function synthesizeSpeech(text: string, voiceName: string, speechRate: number) {
   const prompt = `Speak naturally and warmly as NEXA, a helpful personal assistant. Speech rate: ${Math.max(0.8, Math.min(1.4, speechRate))}x. Keep it conversational, clear and fairly quick. Transcript: ${text}`;
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TTS_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
