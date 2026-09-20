@@ -3,5 +3,5 @@ sdk.dir=/path/to/your/Android/sdk
 
 # Supabase -- the anon/publishable key is PUBLIC by design (safe in a client
 # app, protected by Row Level Security). Never put the service_role key here.
-NEXA_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-NEXA_SUPABASE_ANON_KEY=YOUR_ANON_KEY
+NEXA_SUPABASE_URL=https://blunbsmuohzregwubdex.supabase.co
+NEXA_SUPABASE_ANON_KEY=sb_publishable_aDPGTtSWQaoyBK4I1cB0KA_CwcRDb8C
