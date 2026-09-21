@@ -132,9 +132,10 @@ private fun TaskSection(tasks: List<Task>, add: () -> Unit, toggle: (Task) -> Un
                         Checkbox(checked = task.status == TaskStatus.COMPLETED, onCheckedChange = { toggle(task) })
                         Column(Modifier.weight(1f)) {
                             Text(task.title, fontWeight = FontWeight.SemiBold)
+                            val dueAt = task.dueAt
                             Text(
                                 if (task.status == TaskStatus.COMPLETED) "Completed"
-                                else if (task.dueAt != null) task.dueAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE, MMM d • h:mm a"))
+                                else if (dueAt != null) dueAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE, MMM d • h:mm a"))
                                 else "No due date",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = NexaColors.OnSurfaceMuted,
