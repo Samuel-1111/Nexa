@@ -59,7 +59,14 @@ class LocalTaskRepository(private val database: NexaDatabase) : TaskRepository {
             database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "TASK", id.value, "UPSERT", existing.serverVersion, "{\"id\":\"" + id.value + "\"}", "PENDING", 0, null, null, now, now))
         }
     }
-}
+
+    override suspend fun delete(id: EntityId) {
+        val now = SystemClock.now().toEpochMilli()
+        database.withTransaction {
+            database.taskDao().softDelete(id.value, now)
+            database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "TASK", id.value, "UPSERT", 0, "{\"id\":\"" + id.value + "\"}", "PENDING", 0, null, null, now, now))
+        }
+    }}
 
 class LocalReminderRepository(
     private val database: NexaDatabase,
@@ -79,6 +86,15 @@ class LocalReminderRepository(
         scheduler.schedule(reminder)
         return reminder
     }
+    override suspend fun delete(id: EntityId) {
+        val existing = database.reminderDao().get(id.value) ?: return
+        val now = SystemClock.now().toEpochMilli()
+        database.withTransaction {
+            database.reminderDao().softDelete(id.value, now)
+            database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "REMINDER", id.value, "UPSERT", existing.serverVersion, "{\"id\":\"" + id.value + "\"}", "PENDING", 0, null, null, now, now))
+        }
+        scheduler.cancel(Reminder(EntityId(id.value), title = existing.title, body = existing.body, triggerAt = Instant.ofEpochMilli(existing.triggerAtEpochMs), timezoneId = existing.timezoneId, scheduleState = ReminderScheduleState.CANCELED, deliveryPrecision = ReminderPrecision.valueOf(existing.deliveryPrecision)))
+    }
 }
 
 class LocalNoteRepository(private val database: NexaDatabase) : NoteRepository {
@@ -93,6 +109,13 @@ class LocalNoteRepository(private val database: NexaDatabase) : NoteRepository {
             database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "NOTE", id.value, "UPSERT", 0, "{\"id\":\"${id.value}\"}", "PENDING", 0, null, null, now, now))
         }
         return Note(id, title = title, body = body, source = source, reference = reference)
+    }
+    override suspend fun delete(id: EntityId) {
+        val now = SystemClock.now().toEpochMilli()
+        database.withTransaction {
+            database.noteDao().softDelete(id.value, now)
+            database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "NOTE", id.value, "UPSERT", 0, "{\"id\":\"" + id.value + "\"}", "PENDING", 0, null, null, now, now))
+        }
     }
 }
 
@@ -410,5 +433,12 @@ class LocalCalendarEventRepository(private val database: NexaDatabase) : Calenda
             database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "EVENT", id.value, "UPSERT", 0, "{\"id\":\"" + id.value + "\"}", "PENDING", 0, null, null, now, now))
         }
         return com.nexa.core.model.CalendarEvent(id, title, description, location, startsAt, endsAt)
+    }
+    override suspend fun delete(id: EntityId) {
+        val now = SystemClock.now().toEpochMilli()
+        database.withTransaction {
+            database.calendarEventDao().softDelete(id.value, now)
+            database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "EVENT", id.value, "UPSERT", 0, "{\"id\":\"" + id.value + "\"}", "PENDING", 0, null, null, now, now))
+        }
     }
 }
