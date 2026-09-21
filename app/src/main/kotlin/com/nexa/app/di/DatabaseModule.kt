@@ -21,4 +21,5 @@ object DatabaseModule {
     @Provides fun provideNoteDao(db: NexaDatabase) = db.noteDao()
     @Provides fun provideMemoryDao(db: NexaDatabase) = db.memoryDao()
     @Provides fun provideOutboxDao(db: NexaDatabase) = db.outboxDao()
+    @Provides fun provideCalendarEventDao(db: NexaDatabase) = db.calendarEventDao()
 }
