@@ -5,6 +5,7 @@ import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.functions.functions
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
@@ -23,6 +24,7 @@ fun buildSupabaseClient(): SupabaseClient = createSupabaseClient(
     supabaseKey = BuildConfig.SUPABASE_ANON_KEY,
 ) {
     install(Postgrest)
+    install(Functions)
     install(Auth) {
         autoLoadFromStorage = true
         alwaysAutoRefresh = true
