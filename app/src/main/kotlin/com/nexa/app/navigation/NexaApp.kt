@@ -28,7 +28,6 @@ import com.nexa.feature.assistant.AssistantScreen
 import com.nexa.feature.memory.MemoryScreen
 import com.nexa.feature.onboarding.AuthScreen
 import com.nexa.feature.onboarding.AuthViewModel
-import com.nexa.feature.onboarding.OtpScreen
 import com.nexa.feature.onboarding.PersonalizeNexaScreen
 import com.nexa.feature.organizer.OrganizerScreen
 import com.nexa.feature.settings.SettingsScreen
@@ -48,7 +47,6 @@ fun NexaApp() {
     val prefs = remember { context.getSharedPreferences("nexa_launch", Context.MODE_PRIVATE) }
     var landingVisible by rememberSaveable { mutableStateOf(!prefs.getBoolean("landing_seen", false)) }
     var authMode by rememberSaveable { mutableStateOf<String?>(null) }
-    var otpEmail by rememberSaveable { mutableStateOf<String?>(null) }
     var onboardingComplete by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var subscriptionActive by rememberSaveable { mutableStateOf<Boolean?>(null) }
 
@@ -70,17 +68,6 @@ fun NexaApp() {
                 landingVisible = false
                 authMode = "login"
             },
-        )
-        return
-    }
-
-    val pendingOtpEmail = otpEmail
-    if (pendingOtpEmail != null) {
-        OtpScreen(
-            email = pendingOtpEmail,
-            viewModel = authViewModel,
-            onBack = { otpEmail = null },
-            onVerified = { otpEmail = null },
         )
         return
     }
@@ -112,7 +99,7 @@ fun NexaApp() {
         is SessionStatus.NotAuthenticated -> AuthScreen(
             initialCreateAccount = authMode == "create",
             viewModel = authViewModel,
-            onOtpRequested = { email -> otpEmail = email },
+            onMagicLinkSent = { /* wait for the confirmation link to open NEXA */ },
             onBack = {
                 authMode = null
                 prefs.edit().remove("landing_seen").apply()
