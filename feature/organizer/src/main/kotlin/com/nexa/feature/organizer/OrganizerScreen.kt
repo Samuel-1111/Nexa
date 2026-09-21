@@ -61,7 +61,8 @@ class OrganizerViewModel @Inject constructor(
 fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     var section by rememberSaveable(initialSection) { mutableStateOf(runCatching { OrganizerSection.valueOf(initialSection) }.getOrDefault(OrganizerSection.TASKS)) }
-    var showOverview by rememberSaveable(initialSection) { mutableStateOf(initialSection == "OVERVIEW") }\n    var showNotes by rememberSaveable(initialSection) { mutableStateOf(initialSection == "NOTES") }
+    var showOverview by rememberSaveable(initialSection) { mutableStateOf(initialSection == "OVERVIEW") }
+    var showNotes by rememberSaveable(initialSection) { mutableStateOf(initialSection == "NOTES") }
     var taskDialog by rememberSaveable { mutableStateOf(false) }
     var reminderDialog by rememberSaveable { mutableStateOf(false) }
     var noteDialog by rememberSaveable { mutableStateOf(false) }
@@ -95,16 +96,17 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
         val visibleSections = listOf(OrganizerSection.TASKS, OrganizerSection.REMINDERS, OrganizerSection.EVENTS)
         TabRow(selectedTabIndex = visibleSections.indexOf(section).coerceAtLeast(0)) {
             visibleSections.forEach { item ->
-                Tab(selected = section == item, onClick = { section = item; showOverview = false }, text = { Text(item.name.lowercase().replaceFirstChar { it.uppercase() }) }, icon = { Icon(when(item){ OrganizerSection.TASKS->Icons.Default.CheckCircle; OrganizerSection.REMINDERS->Icons.Default.Alarm; OrganizerSection.NOTES->Icons.Default.Note; OrganizerSection.EVENTS->Icons.Default.CalendarMonth }, null, Modifier.size(18.dp)) })
+                Tab(selected = section == item, onClick = { section = item; showOverview = false; showNotes = false }, text = { Text(item.name.lowercase().replaceFirstChar { it.uppercase() }) }, icon = { Icon(when(item){ OrganizerSection.TASKS->Icons.Default.CheckCircle; OrganizerSection.REMINDERS->Icons.Default.Alarm; OrganizerSection.EVENTS->Icons.Default.CalendarMonth }, null, Modifier.size(18.dp)) })
             }
         }
         if (showOverview) {
             OrganizerOverview(state, onSection = { section = it; showOverview = false; showNotes = false })
+        } else if (showNotes) {
+            NoteSection(state.notes, { noteDialog = true })
         } else when(section) {
             OrganizerSection.TASKS -> TaskSection(state.tasks, { taskDialog = true }, viewModel::toggle)
             OrganizerSection.REMINDERS -> ReminderSection(state.reminders, { prepareReminderCreation() })
-            OrganizerSection.NOTES -> NoteSection(state.notes, { noteDialog = true })
-            OrganizerSection.EVENTS -> EventSection(state.events, { eventDialog = true }, { section = OrganizerSection.NOTES })
+            OrganizerSection.EVENTS -> EventSection(state.events, { eventDialog = true }, { showNotes = true })
         }
     }
     if(taskDialog) TaskDialog({taskDialog=false}) { t,p,d -> viewModel.addTask(t,p,d); taskDialog=false }
