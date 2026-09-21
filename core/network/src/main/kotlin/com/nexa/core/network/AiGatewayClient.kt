@@ -2,6 +2,7 @@ package com.nexa.core.network
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.postgrest
 import io.ktor.client.HttpClient
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -12,6 +13,12 @@ import io.ktor.http.contentType
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.Json
+
+@Serializable
+data class AiChatSummary(val id: String, val title: String = "New chat", val updated_at: String = "")
+
+@Serializable
+data class AiMessage(val id: String, val role: String, val content: String, val created_at: String = "")
 
 @Serializable
 data class AiChatRequest(
@@ -51,6 +58,16 @@ class AiGatewayClient(
         }
         return Json.decodeFromString(AiChatResponse.serializer(), response.bodyAsText())
     }
+
+    suspend fun listChats(): List<AiChatSummary> = runCatching {
+        supabase.postgrest.from("chats").select { filter { eq("archived", false) } }
+            .decodeList<AiChatSummary>()
+    }.getOrDefault(emptyList())
+
+    suspend fun loadMessages(chatId: String): List<AiMessage> = runCatching {
+        supabase.postgrest.from("chat_messages").select { filter { eq("chat_id", chatId) } }
+            .decodeList<AiMessage>()
+    }.getOrDefault(emptyList())
 
     suspend fun sendMessage(message: String, chatId: String? = null, speak: Boolean = false): AiChatResponse =
         post(AiChatRequest(message = message, chat_id = chatId, speak = speak))
