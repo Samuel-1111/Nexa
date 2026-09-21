@@ -42,9 +42,7 @@ class TodayViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            _displayName.value = authRepository.currentDisplayName()
-                ?: authRepository.currentEmail?.substringBefore("@")
-                ?: "there"
+            _displayName.value = authRepository.currentDisplayName() ?: "there"
         }
     }
 
