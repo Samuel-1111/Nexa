@@ -25,6 +25,7 @@ import com.nexa.feature.memory.MemoryScreen
 import com.nexa.feature.onboarding.AuthScreen
 import com.nexa.feature.onboarding.AuthViewModel
 import com.nexa.feature.onboarding.OtpScreen
+import com.nexa.feature.onboarding.PersonalizeNexaScreen
 import com.nexa.feature.organizer.OrganizerScreen
 import com.nexa.feature.settings.SettingsScreen
 import com.nexa.feature.today.TodayRoute
@@ -44,6 +45,8 @@ fun NexaApp() {
     var landingVisible by rememberSaveable { mutableStateOf(!prefs.getBoolean("landing_seen", false)) }
     var authMode by rememberSaveable { mutableStateOf<String?>(null) }
     var otpEmail by rememberSaveable { mutableStateOf<String?>(null) }
+    var onboardingComplete by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    var subscriptionActive by rememberSaveable { mutableStateOf<Boolean?>(null) }
 
     val authViewModel: AuthViewModel = hiltViewModel()
     val sessionStatus by authViewModel.sessionStatus.collectAsState(initial = SessionStatus.Initializing)
@@ -81,7 +84,19 @@ fun NexaApp() {
     when (sessionStatus) {
         is SessionStatus.Authenticated -> {
             authMode = null
-            AuthenticatedApp(authViewModel)
+            LaunchedEffect(Unit) {
+                onboardingComplete = authViewModel.isOnboardingComplete()
+                if (onboardingComplete == true) subscriptionActive = authViewModel.hasActiveSubscription()
+            }
+            when {
+                onboardingComplete == false -> PersonalizeNexaScreen(
+                    onComplete = { onboardingComplete = true; subscriptionActive = true },
+                    viewModel = authViewModel,
+                )
+                onboardingComplete == true && subscriptionActive == false -> SubscriptionRequiredScreen()
+                onboardingComplete == true -> AuthenticatedApp(authViewModel)
+                else -> LoadingAuth()
+            }
         }
         SessionStatus.Initializing -> LoadingAuth()
         is SessionStatus.RefreshFailure,
@@ -190,13 +205,14 @@ private fun AuthenticatedApp(authViewModel: AuthViewModel) {
             startDestination = TopLevelDestination.Today.route,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
-            composable(TopLevelDestination.Today.route) { TodayRoute(onOpenAssistant = { navController.navigate(TopLevelDestination.Assistant.route) }) }
+            composable(TopLevelDestination.Today.route) { TodayRoute(onOpenAssistant = { navController.navigate(TopLevelDestination.Assistant.route) }, onOpenOrganizer = { section -> navController.navigate("organizer/" + section) }) }
             composable(TopLevelDestination.Assistant.route) { AssistantScreen() }
-            composable(TopLevelDestination.Organizer.route) { OrganizerScreen() }
+            composable("organizer/{section}") { entry -> OrganizerScreen(entry.arguments?.getString("section") ?: "OVERVIEW") }
             composable(TopLevelDestination.Settings.route) {
                 SettingsScreen(
                     onOpenMemoryCenter = { navController.navigate("memory") },
                     onSignOut = { authViewModel.signOut() },
+                    onSubscription = { /* subscription gate is handled at the app boundary */ },
                 )
             }
             composable("memory") { MemoryScreen() }
@@ -219,7 +235,8 @@ private fun NexaBottomBar(navController: NavHostController) {
             NavigationBarItem(
                 selected = current?.hierarchy?.any { it.route == destination.route } == true,
                 onClick = {
-                    navController.navigate(destination.route) {
+                    val route = if (destination == TopLevelDestination.Organizer) "organizer/OVERVIEW" else destination.route
+                navController.navigate(route) {
                         popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                         launchSingleTop = true
                         restoreState = true
@@ -228,6 +245,36 @@ private fun NexaBottomBar(navController: NavHostController) {
                 icon = { Icon(icons.getValue(destination), destination.label) },
                 label = { Text(destination.label) },
             )
+        }
+    }
+}
+
+
+@Composable
+private fun SubscriptionRequiredScreen() {
+    Column(
+        Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 24.dp, vertical = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Text("Your NEXA trial has ended", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+        Text("Choose a plan to continue using NEXA. Your saved information stays on your device and in your account.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        PlanCard("Essential", "₦1,000 / month", "150 AI requests • 75 voice requests • 20 automations", true)
+        PlanCard("Pro", "₦3,000 / month", "750 AI requests • 300 voice requests • 100 automations", false)
+        PlanCard("Executive", "₦5,000 / month", "Unlimited AI • 100+ automations • highest limits", false)
+        Text("Payment activation is protected by the NEXA server; no payment is marked successful from the app alone.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun PlanCard(title: String, price: String, detail: String, primary: Boolean) {
+    Card(shape = RoundedCornerShape(20.dp)) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, Modifier.weight(1f))
+                Text(price, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            }
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) { Text(if (primary) "Continue with Essential" else "Choose " + title) }
         }
     }
 }
