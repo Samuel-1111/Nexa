@@ -22,8 +22,8 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
                 description = "Sound alerts for reminders you schedule in NEXA."
                 enableVibration(true)
                 setSound(
-                    Settings.System.DEFAULT_NOTIFICATION_URI,
-                    AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build(),
+                    android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM),
+                    AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build(),
                 )
             }
             manager.createNotificationChannel(channel)
@@ -40,7 +40,7 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        const val CHANNEL_ID = "nexa_reminders_v2"
+        const val CHANNEL_ID = "nexa_reminders_v3"
         const val EXTRA_REMINDER_ID = "reminder_id"
         const val EXTRA_REMINDER_TITLE = "reminder_title"
     }
