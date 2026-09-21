@@ -61,7 +61,7 @@ class OrganizerViewModel @Inject constructor(
 fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     var section by rememberSaveable(initialSection) { mutableStateOf(runCatching { OrganizerSection.valueOf(initialSection) }.getOrDefault(OrganizerSection.TASKS)) }
-    val overviewMode = initialSection == "OVERVIEW"
+    var showOverview by rememberSaveable(initialSection) { mutableStateOf(initialSection == "OVERVIEW") }
     var taskDialog by rememberSaveable { mutableStateOf(false) }
     var reminderDialog by rememberSaveable { mutableStateOf(false) }
     var noteDialog by rememberSaveable { mutableStateOf(false) }
@@ -94,14 +94,12 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
         Spacer(Modifier.height(7.dp))
         ScrollableTabRow(selectedTabIndex = section.ordinal, edgePadding = 0.dp) {
             OrganizerSection.entries.forEach { item ->
-                Tab(selected = section == item, onClick = { section = item }, text = { Text(item.name.lowercase().replaceFirstChar { it.uppercase() }) }, icon = { Icon(when(item){ OrganizerSection.TASKS->Icons.Default.CheckCircle; OrganizerSection.REMINDERS->Icons.Default.Alarm; OrganizerSection.NOTES->Icons.Default.Note; OrganizerSection.EVENTS->Icons.Default.CalendarMonth }, null, Modifier.size(18.dp)) })
+                Tab(selected = section == item, onClick = { section = item; showOverview = false }, text = { Text(item.name.lowercase().replaceFirstChar { it.uppercase() }) }, icon = { Icon(when(item){ OrganizerSection.TASKS->Icons.Default.CheckCircle; OrganizerSection.REMINDERS->Icons.Default.Alarm; OrganizerSection.NOTES->Icons.Default.Note; OrganizerSection.EVENTS->Icons.Default.CalendarMonth }, null, Modifier.size(18.dp)) })
             }
         }
-        if (overviewMode) {
-            OrganizerOverview(state, onSection = { section = it })
-            Spacer(Modifier.height(8.dp))
-        }
-        when(section) {
+        if (showOverview) {
+            OrganizerOverview(state, onSection = { section = it; showOverview = false })
+        } else when(section) {
             OrganizerSection.TASKS -> TaskSection(state.tasks, { taskDialog = true }, viewModel::toggle)
             OrganizerSection.REMINDERS -> ReminderSection(state.reminders, { prepareReminderCreation() })
             OrganizerSection.NOTES -> NoteSection(state.notes, { noteDialog = true })
