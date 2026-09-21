@@ -222,6 +222,32 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
     }
 
 
+        val remoteEvents = supabase.postgrest.from("calendar_events").select { filter { eq("owner_id", userId) } }.decodeList<JsonObject>()
+        for (row in remoteEvents) {
+            val id = row.string("id") ?: continue
+            val start = row.instant("starts_at") ?: continue
+            val end = row.instant("ends_at") ?: continue
+            val local = database.calendarEventDao().get(id)
+            if (!shouldApplyRemote(local?.syncState)) continue
+            database.calendarEventDao().upsert(
+                CalendarEventEntity(
+                    id = id,
+                    ownerId = userId,
+                    title = row.string("title").orEmpty(),
+                    description = row.string("description"),
+                    location = row.string("location"),
+                    startsAtEpochMs = start,
+                    endsAtEpochMs = end,
+                    timezoneId = row.string("timezone") ?: "UTC",
+                    createdAtEpochMs = row.instant("created_at") ?: now,
+                    updatedAtEpochMs = row.instant("updated_at") ?: now,
+                    deletedAtEpochMs = row.instant("deleted_at"),
+                    serverVersion = row.long("server_version") ?: 1L,
+                    syncState = "SYNCED",
+                ),
+            )
+        }
+
     // Remote pulls may only replace records that are already synchronized.
     // Pending/conflicted/error local changes stay local until their outbox
     // operation succeeds, preventing a background pull from silently losing work.
@@ -379,7 +405,7 @@ class LocalCalendarEventRepository(private val database: NexaDatabase) : Calenda
         val now = SystemClock.now().toEpochMilli()
         database.withTransaction {
             database.calendarEventDao().upsert(CalendarEventEntity(id.value, null, title, description, location, startsAt.toEpochMilli(), endsAt.toEpochMilli(), java.time.ZoneId.systemDefault().id, now, now, null, 0, "PENDING"))
-            database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "EVENT", id.value, "UPSERT", 0, "{"id":"" + id.value + ""}", "PENDING", 0, null, null, now, now))
+            database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "EVENT", id.value, "UPSERT", 0, "{\\"id\\":\\"" + id.value + "\\"}", "PENDING", 0, null, null, now, now))
         }
         return com.nexa.core.model.CalendarEvent(id, title, description, location, startsAt, endsAt)
     }
