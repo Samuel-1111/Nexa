@@ -4,7 +4,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.providers.builtin.OTP
 import io.ktor.client.HttpClient
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -32,6 +32,8 @@ fun buildSupabaseClient(): SupabaseClient = createSupabaseClient(
     install(Auth) {
         autoLoadFromStorage = true
         alwaysAutoRefresh = true
+        scheme = "nexa"
+        host = "auth"
     }
 }
 
@@ -120,36 +122,10 @@ class AuthRepository(private val client: SupabaseClient, private val httpClient:
         return kotlinx.serialization.json.Json.decodeFromString<RemitaInitResult>(response.bodyAsText())
     }
 
-    suspend fun signInWithEmail(email: String, password: String) {
-        client.auth.signInWith(Email) {
-            this.email = email
-            this.password = password
+    suspend fun sendMagicLink(email: String) {
+        client.auth.signInWith(OTP) {
+            this.email = email.trim()
         }
-    }
-
-    // Real signup: creates the account WITH a password (unlike the OTP/magic-link
-    // flow, which creates a passwordless account). Supabase emails a 6-digit
-    // code as part of its normal "confirm signup" email. Login afterwards
-    // uses that same password -- no OTP needed to log back in.
-    suspend fun signUpWithEmail(email: String, password: String) {
-        client.auth.signUpWith(Email) {
-            this.email = email
-            this.password = password
-        }
-    }
-
-    // Verifies the code from that signup confirmation email. Uses the SIGNUP
-    // type, matching signUpWithEmail above -- not the passwordless OTP type.
-    suspend fun verifySignupOtp(email: String, token: String) {
-        client.auth.verifyEmailOtp(
-            type = OtpType.Email.SIGNUP,
-            email = email,
-            token = token,
-        )
-    }
-
-    suspend fun resendSignupOtp(email: String) {
-        client.auth.resendEmail(OtpType.Email.SIGNUP, email)
     }
 
     suspend fun sendPasswordResetEmail(email: String) {
