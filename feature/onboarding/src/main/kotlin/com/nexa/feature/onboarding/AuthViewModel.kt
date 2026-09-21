@@ -36,13 +36,26 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
     suspend fun hasActiveSubscription(): Boolean = authRepository.subscriptionAccess()
     suspend fun initiateSubscription(plan: String): AuthRepository.RemitaInitResult = authRepository.initiateSubscription(plan)
 
-    fun sendMagicLink(email: String, onSent: () -> Unit) = viewModelScope.launch {
+    fun signIn(email: String, password: String, onSignedIn: () -> Unit) = viewModelScope.launch {
         _busy.value = true; _message.value = null
         try {
             val clean = email.trim()
-            require(clean.contains("@") && clean.contains(".")) { "Enter a valid email address." }
-            authRepository.sendMagicLink(clean)
-            _message.value = "Check your email for the NEXA confirmation link."
+            require(clean.contains("@") && clean.contains(".")) { "Enter a valid Gmail address." }
+            require(password.length >= 6) { "Enter your password." }
+            authRepository.signInWithPassword(clean, password)
+            onSignedIn()
+        } catch (e: Exception) { _message.value = friendlyError(e) }
+        finally { _busy.value = false }
+    }
+
+    fun createAccount(email: String, password: String, onSent: () -> Unit) = viewModelScope.launch {
+        _busy.value = true; _message.value = null
+        try {
+            val clean = email.trim()
+            require(clean.contains("@") && clean.contains(".")) { "Enter a valid Gmail address." }
+            require(password.length >= 6) { "Password must be at least 6 characters." }
+            authRepository.createAccount(clean, password)
+            _message.value = "Account created. Check your email and tap the NEXA confirmation link to continue."
             onSent()
         } catch (e: Exception) { _message.value = friendlyError(e) }
         finally { _busy.value = false }
@@ -59,7 +72,7 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
         return when {
             raw.contains("rate limit") || raw.contains("too many") -> "Too many attempts. Please wait a moment and try again."
             raw.contains("network") || raw.contains("timeout") || raw.contains("connection") -> "Check your internet connection and try again."
-            raw.contains("redirect") || raw.contains("not allowed") -> "The confirmation link is not configured yet. Please contact support."
+            raw.contains("redirect") || raw.contains("not allowed") -> "The confirmation link is not configured. Please try again later."
             else -> "Something went wrong. Please try again."
         }
     }
