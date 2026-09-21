@@ -15,6 +15,7 @@ import androidx.compose.material3.Surface
 import androidx.core.content.ContextCompat
 import com.nexa.app.navigation.NexaApp
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.handleDeeplinks
 import javax.inject.Inject
 import dagger.hilt.android.AndroidEntryPoint
 
