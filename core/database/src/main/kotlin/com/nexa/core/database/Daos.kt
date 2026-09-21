@@ -12,8 +12,12 @@ interface TaskDao {
     fun observeOpen(): Flow<List<TaskEntity>>
     @Query("SELECT * FROM tasks WHERE id = :id LIMIT 1")
     suspend fun get(id: String): TaskEntity?
+    @Query("SELECT * FROM tasks WHERE deletedAtEpochMs IS NULL ORDER BY status ASC, priority DESC, dueAtEpochMs ASC, createdAtEpochMs DESC")
+    fun observeAll(): Flow<List<TaskEntity>>
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: TaskEntity)
+    @Query("UPDATE tasks SET status = :status, completedAtEpochMs = :completedAt, updatedAtEpochMs = :updatedAt, syncState = 'PENDING' WHERE id = :id")
+    suspend fun setCompletion(id: String, status: String, completedAt: Long?, updatedAt: Long)
 }
 
 @Dao
@@ -69,4 +73,15 @@ interface OutboxDao {
     suspend fun markDone(id: String, now: Long)
     @Query("UPDATE outbox_operations SET state = 'RETRY', attemptCount = attemptCount + 1, lastErrorCode = :error, nextAttemptAtEpochMs = :nextAttempt, updatedAtEpochMs = :now WHERE id = :id")
     suspend fun markRetry(id: String, error: String, nextAttempt: Long, now: Long)
+}
+
+
+@Dao
+interface CalendarEventDao {
+    @Query("SELECT * FROM calendar_events WHERE deletedAtEpochMs IS NULL ORDER BY startsAtEpochMs ASC")
+    fun observeUpcoming(): Flow<List<CalendarEventEntity>>
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: CalendarEventEntity)
+    @Query("SELECT * FROM calendar_events WHERE id = :id LIMIT 1")
+    suspend fun get(id: String): CalendarEventEntity?
 }
