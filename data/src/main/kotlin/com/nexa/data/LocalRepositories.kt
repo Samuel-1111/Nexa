@@ -407,7 +407,7 @@ class LocalCalendarEventRepository(private val database: NexaDatabase) : Calenda
         val now = SystemClock.now().toEpochMilli()
         database.withTransaction {
             database.calendarEventDao().upsert(CalendarEventEntity(id.value, null, title, description, location, startsAt.toEpochMilli(), endsAt.toEpochMilli(), java.time.ZoneId.systemDefault().id, now, now, null, 0, "PENDING"))
-            database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "EVENT", id.value, "UPSERT", 0, "{\\"id\\":\\"" + id.value + "\\"}", "PENDING", 0, null, null, now, now))
+            database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "EVENT", id.value, "UPSERT", 0, "{\"id\":\"" + id.value + "\"}", "PENDING", 0, null, null, now, now))
         }
         return com.nexa.core.model.CalendarEvent(id, title, description, location, startsAt, endsAt)
     }
