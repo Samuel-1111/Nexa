@@ -17,7 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.dp\nimport androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -98,7 +98,7 @@ fun NexaApp() {
             }
             when {
                 onboardingComplete == false -> PersonalizeNexaScreen(
-                    onComplete = { onboardingComplete = true; subscriptionActive = true },
+                    onComplete = { onboardingComplete = true; subscriptionActive = null },
                     viewModel = authViewModel,
                 )
                 onboardingComplete == true && subscriptionActive == false -> SubscriptionRequiredScreen(authViewModel)
@@ -251,7 +251,7 @@ private fun NexaBottomBar(navController: NavHostController) {
                     }
                 },
                 icon = { Icon(icons.getValue(destination), destination.label) },
-                label = { Text(destination.label) },
+                label = { Text(destination.label, fontSize = 11.sp, maxLines = 1) },
             )
         }
     }
