@@ -31,6 +31,12 @@ fun buildSupabaseClient(): SupabaseClient = createSupabaseClient(
 
 @Serializable
 private data class ProfileNameRow(@SerialName("display_name") val displayName: String? = null)
+@Serializable
+private data class AssistantNameRow(@SerialName("assistant_name") val value: String? = null)
+@Serializable
+private data class OnboardingRow(@SerialName("onboarding_completed") val value: Boolean = false)
+@Serializable
+private data class SubscriptionRow(val status: String? = null, @SerialName("trial_ends_at") val trialEndsAt: String? = null, @SerialName("current_period_end") val currentPeriodEnd: String? = null)
 
 class AuthRepository(private val client: SupabaseClient) {
     val isAuthenticated: Flow<Boolean> = client.auth.sessionStatus.map {
@@ -52,9 +58,8 @@ class AuthRepository(private val client: SupabaseClient) {
     suspend fun isOnboardingComplete(): Boolean {
         val id = currentUserId ?: return false
         return runCatching {
-            @Serializable data class Row(@SerialName("onboarding_completed") val value: Boolean = false)
             client.from("profiles").select(columns = Columns.list("onboarding_completed")) { filter { eq("id", id) } }
-                .decodeSingle<Row>().value
+                .decodeSingle<OnboardingRow>().value
         }.getOrDefault(false)
     }
 
@@ -73,20 +78,14 @@ class AuthRepository(private val client: SupabaseClient) {
     suspend fun currentAssistantName(): String? {
         val id = currentUserId ?: return null
         return runCatching {
-            @Serializable data class Row(@SerialName("assistant_name") val value: String? = null)
             client.from("profiles").select(columns = Columns.list("assistant_name")) { filter { eq("id", id) } }
-                .decodeSingle<Row>().value?.takeIf { it.isNotBlank() }
+                .decodeSingle<AssistantNameRow>().value?.takeIf { it.isNotBlank() }
         }.getOrNull()
     }
 
     suspend fun subscriptionAccess(): Boolean {
         val id = currentUserId ?: return false
         return runCatching {
-            @Serializable data class SubscriptionRow(
-                val status: String? = null,
-                @SerialName("trial_ends_at") val trialEndsAt: String? = null,
-                @SerialName("current_period_end") val currentPeriodEnd: String? = null,
-            )
             val row = client.from("subscriptions").select { filter { eq("user_id", id) } }.decodeSingle<SubscriptionRow>()
             val now = java.time.Instant.now()
             val trialOk = row.status == "TRIALING" && row.trialEndsAt?.let { java.time.Instant.parse(it).isAfter(now) } == true
