@@ -58,10 +58,7 @@ fun TodayRoute(
                                 color = NexaColors.PrimaryDark,
                             )
                         }
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = MaterialTheme.colorScheme.surface,
-                        ) {
+                        Card(shape = RoundedCornerShape(50), colors = CardDefaults.cardColors(containerColor = NexaColors.Surface)) {
                             Icon(Icons.Default.Person, null, Modifier.padding(6.dp), tint = NexaColors.Primary)
                         }
                     }
@@ -153,8 +150,8 @@ fun TodayRoute(
                                 )
                                 Spacer(Modifier.width(5.dp))
                                 Text(
-                                    task.title,
-                                    Modifier.weight(1f),
+                                    text = task.title,
+                                    modifier = Modifier.weight(1f),
                                     fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
                                     style = MaterialTheme.typography.bodySmall,
