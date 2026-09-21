@@ -21,6 +21,23 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
 
     fun clearMessage() { _message.value = null }
 
+    fun saveOnboardingProfile(displayName: String, assistantName: String, onComplete: () -> Unit) = viewModelScope.launch {
+        _busy.value = true
+        _message.value = null
+        try {
+            require(displayName.trim().length >= 2) { "Enter your name." }
+            require(assistantName.trim().isNotEmpty()) { "Give your PA a name." }
+            authRepository.saveOnboardingProfile(displayName.trim(), assistantName.trim())
+            onComplete()
+        } catch (e: Exception) {
+            _message.value = e.message ?: "Could not save your profile."
+        } finally {
+            _busy.value = false
+        }
+    }
+
+    suspend fun isOnboardingComplete(): Boolean = authRepository.isOnboardingComplete()
+
     fun signUp(email: String, password: String, confirmPassword: String, onOtpSent: (String) -> Unit) = viewModelScope.launch {
         _busy.value = true
         _message.value = null
