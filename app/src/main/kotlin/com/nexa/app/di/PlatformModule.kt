@@ -21,7 +21,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object PlatformModule {
     @Provides @Singleton fun provideSupabaseClient(): SupabaseClient = buildSupabaseClient()
-    @Provides @Singleton fun provideAuthRepository(client: SupabaseClient): AuthRepository = AuthRepository(client)
+    @Provides @Singleton fun provideAuthRepository(client: SupabaseClient, http: HttpClient): AuthRepository = AuthRepository(client, http)
     @Provides @Singleton fun provideHttpClient(): HttpClient = HttpClient(Android)
     @Provides @Singleton fun provideAiGatewayClient(client: SupabaseClient, http: HttpClient): AiGatewayClient = AiGatewayClient(client, http)
     @Provides @Singleton fun provideReminderScheduler(@ApplicationContext context: Context): ReminderScheduler = AlarmManagerReminderScheduler(context)
