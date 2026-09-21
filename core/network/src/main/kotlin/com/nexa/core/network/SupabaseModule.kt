@@ -5,8 +5,13 @@ import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
-import io.github.jan.supabase.functions.Functions
-import io.github.jan.supabase.functions.functions
+import io.ktor.client.HttpClient
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
@@ -24,7 +29,6 @@ fun buildSupabaseClient(): SupabaseClient = createSupabaseClient(
     supabaseKey = BuildConfig.SUPABASE_ANON_KEY,
 ) {
     install(Postgrest)
-    install(Functions)
     install(Auth) {
         autoLoadFromStorage = true
         alwaysAutoRefresh = true
@@ -40,7 +44,7 @@ private data class OnboardingRow(@SerialName("onboarding_completed") val value: 
 @Serializable
 private data class SubscriptionRow(val status: String? = null, @SerialName("trial_ends_at") val trialEndsAt: String? = null, @SerialName("current_period_end") val currentPeriodEnd: String? = null)
 
-class AuthRepository(private val client: SupabaseClient) {
+class AuthRepository(private val client: SupabaseClient, private val httpClient: HttpClient) {
     val isAuthenticated: Flow<Boolean> = client.auth.sessionStatus.map {
         it is io.github.jan.supabase.auth.status.SessionStatus.Authenticated
     }
@@ -107,10 +111,12 @@ class AuthRepository(private val client: SupabaseClient) {
     )
 
     suspend fun initiateSubscription(plan: String): RemitaInitResult {
-        val response = client.functions.invoke(
-            function = "remita-initiate",
-            body = buildJsonObject { put("plan", plan) },
-        )
+        val token = client.auth.currentAccessTokenOrNull() ?: error("Not authenticated")
+        val response = httpClient.post(BuildConfig.SUPABASE_URL + "/functions/v1/remita-initiate") {
+            header("Authorization", "Bearer " + token)
+            contentType(ContentType.Application.Json)
+            setBody(buildJsonObject { put("plan", plan) })
+        }
         return kotlinx.serialization.json.Json.decodeFromString<RemitaInitResult>(response.bodyAsText())
     }
 
