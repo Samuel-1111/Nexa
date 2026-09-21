@@ -23,7 +23,7 @@ data class ReminderEntity(
 
 @Entity(tableName = "notes", indices = [Index(value = ["updatedAtEpochMs"]), Index(value = ["ownerId"])])
 data class NoteEntity(
-    @PrimaryKey val id: String, val ownerId: String?, val title: String?, val body: String, val source: String,
+    @PrimaryKey val id: String, val ownerId: String?, val title: String?, val body: String, val source: String, val reference: String? = null,
     val createdAtEpochMs: Long, val updatedAtEpochMs: Long, val deletedAtEpochMs: Long?,
     val serverVersion: Long = 0, val syncState: String,
 )
@@ -41,4 +41,13 @@ data class OutboxOperationEntity(
     @PrimaryKey val id: String, val entityType: String, val entityId: String, val operationType: String,
     val baseServerVersion: Long, val payloadJson: String, val state: String, val attemptCount: Int,
     val nextAttemptAtEpochMs: Long?, val lastErrorCode: String?, val createdAtEpochMs: Long, val updatedAtEpochMs: Long,
+)
+
+
+@Entity(tableName = "calendar_events", indices = [Index(value = ["startsAtEpochMs"]), Index(value = ["ownerId"])])
+data class CalendarEventEntity(
+    @PrimaryKey val id: String, val ownerId: String?, val title: String, val description: String?, val location: String?,
+    val startsAtEpochMs: Long, val endsAtEpochMs: Long, val timezoneId: String,
+    val createdAtEpochMs: Long, val updatedAtEpochMs: Long, val deletedAtEpochMs: Long?,
+    val serverVersion: Long = 0, val syncState: String,
 )
