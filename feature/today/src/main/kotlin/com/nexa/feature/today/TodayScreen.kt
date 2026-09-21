@@ -86,7 +86,7 @@ fun TodayRoute(
                             Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 9.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(Icons.Default.AutoAwesome, null, tint = NexaColors.Primary, Modifier.size(18.dp))
+                            Icon(Icons.Default.AutoAwesome, null, modifier = Modifier.size(18.dp), tint = NexaColors.Primary)
                             Spacer(Modifier.width(7.dp))
                             Text(
                                 "Today is a new opportunity to build the life you want.",
@@ -95,7 +95,7 @@ fun TodayRoute(
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 2,
                             )
-                            Icon(Icons.Default.ChevronRight, null, tint = NexaColors.Primary, Modifier.size(18.dp))
+                            Icon(Icons.Default.ChevronRight, null, modifier = Modifier.size(18.dp), tint = NexaColors.Primary)
                         }
                     }
 
@@ -109,7 +109,7 @@ fun TodayRoute(
                                     "Daily Overview",
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
-                                    Modifier.weight(1f),
+                                    modifier = Modifier.weight(1f),
                                 )
                                 TextButton(
                                     onClick = { onOpenOrganizer("OVERVIEW") },
@@ -247,7 +247,7 @@ private fun CompactSection(
     ) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 5.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, Modifier.weight(1f))
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 TextButton(
                     onClick = viewAll,
                     contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp),
