@@ -33,6 +33,7 @@ dependencies {
     api(platform(libs.supabase.bom))
     api("io.github.jan-tennert.supabase:postgrest-kt")
     api("io.github.jan-tennert.supabase:auth-kt")
+    api("io.github.jan-tennert.supabase:functions-kt")
     api(libs.ktor.client.android)
     implementation(libs.kotlinx.serialization.json)
 }
