@@ -5,6 +5,7 @@ import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.functions.functions
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
@@ -12,6 +13,8 @@ import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -90,6 +93,24 @@ class AuthRepository(private val client: SupabaseClient) {
             val paidOk = row.status == "ACTIVE" && row.currentPeriodEnd?.let { java.time.Instant.parse(it).isAfter(now) } == true
             trialOk || paidOk
         }.getOrDefault(false)
+    }
+
+    @Serializable
+    data class RemitaInitResult(
+        val ok: Boolean = false,
+        val plan: String? = null,
+        val amount_kobo: Int? = null,
+        val rrr: String? = null,
+        val order_id: String? = null,
+        val error: String? = null,
+    )
+
+    suspend fun initiateSubscription(plan: String): RemitaInitResult {
+        val response = client.functions.invoke(
+            function = "remita-initiate",
+            body = buildJsonObject { put("plan", plan) },
+        )
+        return response.body<RemitaInitResult>()
     }
 
     suspend fun signInWithEmail(email: String, password: String) {
