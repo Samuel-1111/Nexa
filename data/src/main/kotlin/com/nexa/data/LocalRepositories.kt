@@ -5,6 +5,7 @@ import com.nexa.core.common.EntityId
 import com.nexa.core.common.SystemClock
 import com.nexa.core.database.NexaDatabase
 import com.nexa.core.database.NoteEntity
+import com.nexa.core.database.CalendarEventEntity
 import com.nexa.core.database.OutboxOperationEntity
 import com.nexa.core.database.ReminderEntity
 import com.nexa.core.database.TaskEntity
@@ -23,6 +24,7 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import com.nexa.domain.CalendarEventRepository
 import com.nexa.domain.NoteRepository
 import com.nexa.domain.ReminderRepository
 import com.nexa.domain.TaskRepository
@@ -34,6 +36,9 @@ class LocalTaskRepository(private val database: NexaDatabase) : TaskRepository {
     override fun observeOpenTasks(): Flow<List<Task>> = database.taskDao().observeOpen().map { rows ->
         rows.map { Task(EntityId(it.id), it.title, it.body, TaskStatus.valueOf(it.status), Priority.valueOf(it.priority), it.dueAtEpochMs?.let(Instant::ofEpochMilli), it.completedAtEpochMs?.let(Instant::ofEpochMilli)) }
     }
+    override fun observeAllTasks(): Flow<List<Task>> = database.taskDao().observeAll().map { rows ->
+        rows.map { Task(EntityId(it.id), it.title, it.body, TaskStatus.valueOf(it.status), Priority.valueOf(it.priority), it.dueAtEpochMs?.let(Instant::ofEpochMilli), it.completedAtEpochMs?.let(Instant::ofEpochMilli)) }
+    }
     override suspend fun create(title: String, priority: Priority, dueAt: Instant?): Task {
         val id = EntityId.new()
         val now = SystemClock.now().toEpochMilli()
@@ -43,12 +48,15 @@ class LocalTaskRepository(private val database: NexaDatabase) : TaskRepository {
         }
         return Task(id, title, priority = priority, dueAt = dueAt)
     }
-    override suspend fun complete(id: EntityId) {
+    override suspend fun complete(id: EntityId) = toggleComplete(id)
+
+    override suspend fun toggleComplete(id: EntityId) {
         val existing = database.taskDao().get(id.value) ?: return
         val now = SystemClock.now().toEpochMilli()
+        val completed = existing.status != "COMPLETED"
         database.withTransaction {
-            database.taskDao().upsert(existing.copy(status = "COMPLETED", completedAtEpochMs = now, updatedAtEpochMs = now, syncState = "PENDING"))
-            database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "TASK", id.value, "UPSERT", existing.serverVersion, "{\"id\":\"${id.value}\"}", "PENDING", 0, null, null, now, now))
+            database.taskDao().setCompletion(id.value, if (completed) "COMPLETED" else "OPEN", if (completed) now else null, now)
+            database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "TASK", id.value, "UPSERT", existing.serverVersion, "{"id":"" + id.value + ""}", "PENDING", 0, null, null, now, now))
         }
     }
 }
@@ -60,14 +68,14 @@ class LocalReminderRepository(
     override fun observeUpcoming(): Flow<List<Reminder>> = database.reminderDao().observeActive().map { rows ->
         rows.map { Reminder(EntityId(it.id), it.taskId?.let(::EntityId), it.title, it.body, Instant.ofEpochMilli(it.triggerAtEpochMs), it.timezoneId, ReminderScheduleState.valueOf(it.scheduleState), ReminderPrecision.valueOf(it.deliveryPrecision)) }
     }
-    override suspend fun create(title: String, triggerAt: Instant, timezoneId: String): Reminder {
+    override suspend fun create(title: String, triggerAt: Instant, timezoneId: String, body: String?): Reminder {
         val id = EntityId.new()
         val now = SystemClock.now().toEpochMilli()
         database.withTransaction {
-            database.reminderDao().upsert(ReminderEntity(id.value, null, null, title, null, triggerAt.toEpochMilli(), timezoneId, "FIXED_INSTANT", "STANDARD", id.value.hashCode(), "SCHEDULED", null, now, now, null, 0, "PENDING"))
+            database.reminderDao().upsert(ReminderEntity(id.value, null, null, title, body, triggerAt.toEpochMilli(), timezoneId, "FIXED_INSTANT", "STANDARD", id.value.hashCode(), "SCHEDULED", null, now, now, null, 0, "PENDING"))
             database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "REMINDER", id.value, "UPSERT", 0, "{\"id\":\"${id.value}\"}", "PENDING", 0, null, null, now, now))
         }
-        val reminder = Reminder(id, title = title, triggerAt = triggerAt, timezoneId = timezoneId, scheduleState = ReminderScheduleState.SCHEDULED)
+        val reminder = Reminder(id, title = title, body = body, triggerAt = triggerAt, timezoneId = timezoneId, scheduleState = ReminderScheduleState.SCHEDULED)
         scheduler.schedule(reminder)
         return reminder
     }
@@ -77,14 +85,14 @@ class LocalNoteRepository(private val database: NexaDatabase) : NoteRepository {
     override fun observeRecent(): Flow<List<Note>> = database.noteDao().observeRecent().map { rows ->
         rows.map { Note(EntityId(it.id), it.title, it.body, NoteSource.valueOf(it.source)) }
     }
-    override suspend fun create(body: String, source: NoteSource): Note {
+    override suspend fun create(title: String?, body: String, source: NoteSource, reference: String?): Note {
         val id = EntityId.new()
         val now = SystemClock.now().toEpochMilli()
         database.withTransaction {
-            database.noteDao().upsert(NoteEntity(id.value, null, null, body, source.name, now, now, null, 0, "PENDING"))
+            database.noteDao().upsert(NoteEntity(id.value, null, title, body, source.name, reference, now, now, null, 0, "PENDING"))
             database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "NOTE", id.value, "UPSERT", 0, "{\"id\":\"${id.value}\"}", "PENDING", 0, null, null, now, now))
         }
-        return Note(id, body = body, source = source)
+        return Note(id, title = title, body = body, source = source, reference = reference)
     }
 }
 
@@ -333,5 +341,21 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
         } catch (_: Exception) {
             Result.retry()
         }
+    }
+}
+
+
+class LocalCalendarEventRepository(private val database: NexaDatabase) : CalendarEventRepository {
+    override fun observeUpcoming(): Flow<List<com.nexa.core.model.CalendarEvent>> = database.calendarEventDao().observeUpcoming().map { rows ->
+        rows.map { com.nexa.core.model.CalendarEvent(EntityId(it.id), it.title, it.description, it.location, Instant.ofEpochMilli(it.startsAtEpochMs), Instant.ofEpochMilli(it.endsAtEpochMs)) }
+    }
+    override suspend fun create(title: String, description: String?, location: String?, startsAt: Instant, endsAt: Instant): com.nexa.core.model.CalendarEvent {
+        val id = EntityId.new()
+        val now = SystemClock.now().toEpochMilli()
+        database.withTransaction {
+            database.calendarEventDao().upsert(CalendarEventEntity(id.value, null, title, description, location, startsAt.toEpochMilli(), endsAt.toEpochMilli(), java.time.ZoneId.systemDefault().id, now, now, null, 0, "PENDING"))
+            database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "EVENT", id.value, "UPSERT", 0, "{"id":"" + id.value + ""}", "PENDING", 0, null, null, now, now))
+        }
+        return com.nexa.core.model.CalendarEvent(id, title, description, location, startsAt, endsAt)
     }
 }
