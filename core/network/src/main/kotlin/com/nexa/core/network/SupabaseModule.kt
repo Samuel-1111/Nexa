@@ -9,6 +9,7 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.coroutines.flow.Flow
@@ -43,6 +44,43 @@ class AuthRepository(private val client: SupabaseClient) {
                 filter { eq("id", id) }
             }.decodeSingle<ProfileNameRow>().displayName?.takeIf { it.isNotBlank() }
         }.getOrNull()
+    }
+
+    suspend fun saveOnboardingProfile(displayName: String, assistantName: String) {
+        val id = currentUserId ?: error("Not authenticated")
+        client.from("profiles").update({
+            set("display_name", displayName.trim())
+            set("assistant_name", assistantName.trim().ifBlank { "NEXA" })
+            set("onboarding_completed", true)
+            set("timezone", java.time.ZoneId.systemDefault().id)
+        }) {
+            filter { eq("id", id) }
+        }
+    }
+
+    suspend fun currentAssistantName(): String? {
+        val id = currentUserId ?: return null
+        return runCatching {
+            @Serializable data class Row(@SerialName("assistant_name") val value: String? = null)
+            client.from("profiles").select(columns = Columns.list("assistant_name")) { filter { eq("id", id) } }
+                .decodeSingle<Row>().value?.takeIf { it.isNotBlank() }
+        }.getOrNull()
+    }
+
+    suspend fun subscriptionAccess(): Boolean {
+        val id = currentUserId ?: return false
+        return runCatching {
+            @Serializable data class SubscriptionRow(
+                val status: String? = null,
+                @SerialName("trial_ends_at") val trialEndsAt: String? = null,
+                @SerialName("current_period_end") val currentPeriodEnd: String? = null,
+            )
+            val row = client.from("subscriptions").select { filter { eq("user_id", id) } }.decodeSingle<SubscriptionRow>()
+            val now = java.time.Instant.now()
+            val trialOk = row.status == "TRIALING" && row.trialEndsAt?.let { java.time.Instant.parse(it).isAfter(now) } == true
+            val paidOk = row.status == "ACTIVE" && row.currentPeriodEnd?.let { java.time.Instant.parse(it).isAfter(now) } == true
+            trialOk || paidOk
+        }.getOrDefault(false)
     }
 
     suspend fun signInWithEmail(email: String, password: String) {
