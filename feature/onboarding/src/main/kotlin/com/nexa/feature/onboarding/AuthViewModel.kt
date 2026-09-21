@@ -38,6 +38,7 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
 
     suspend fun isOnboardingComplete(): Boolean = authRepository.isOnboardingComplete()
     suspend fun hasActiveSubscription(): Boolean = authRepository.subscriptionAccess()
+    suspend fun initiateSubscription(plan: String): com.nexa.core.network.AuthRepository.RemitaInitResult = authRepository.initiateSubscription(plan)
 
     fun signUp(email: String, password: String, confirmPassword: String, onOtpSent: (String) -> Unit) = viewModelScope.launch {
         _busy.value = true
