@@ -1,6 +1,8 @@
 package com.nexa.app.navigation
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -93,7 +95,7 @@ fun NexaApp() {
                     onComplete = { onboardingComplete = true; subscriptionActive = true },
                     viewModel = authViewModel,
                 )
-                onboardingComplete == true && subscriptionActive == false -> SubscriptionRequiredScreen()
+                onboardingComplete == true && subscriptionActive == false -> SubscriptionRequiredScreen(authViewModel)
                 onboardingComplete == true -> AuthenticatedApp(authViewModel)
                 else -> LoadingAuth()
             }
@@ -251,30 +253,30 @@ private fun NexaBottomBar(navController: NavHostController) {
 
 
 @Composable
-private fun SubscriptionRequiredScreen() {
+private fun SubscriptionRequiredScreen(authViewModel: AuthViewModel) {
     Column(
         Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 24.dp, vertical = 28.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text("Your NEXA trial has ended", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
         Text("Choose a plan to continue using NEXA. Your saved information stays on your device and in your account.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        PlanCard("Essential", "₦1,000 / month", "150 AI requests • 75 voice requests • 20 automations", true)
-        PlanCard("Pro", "₦3,000 / month", "750 AI requests • 300 voice requests • 100 automations", false)
-        PlanCard("Executive", "₦5,000 / month", "Unlimited AI • 100+ automations • highest limits", false)
+        PlanCard("Essential", "₦1,000 / month", "150 AI requests • 75 voice requests • 20 automations", "ESSENTIAL", authViewModel)
+        PlanCard("Pro", "₦3,000 / month", "750 AI requests • 300 voice requests • 100 automations", "PRO", authViewModel)
+        PlanCard("Executive", "₦5,000 / month", "Unlimited AI • 100+ automations • highest limits", "EXECUTIVE", authViewModel)
         Text("Payment activation is protected by the NEXA server; no payment is marked successful from the app alone.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
-private fun PlanCard(title: String, price: String, detail: String, primary: Boolean) {
-    Card(shape = RoundedCornerShape(20.dp)) {
+private fun PlanCard(title: String, price: String, detail: String, plan: String, authViewModel: AuthViewModel) {
+    var busy by remember { mutableStateOf(false) }\n    val context = LocalContext.current\n    Card(shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, Modifier.weight(1f))
                 Text(price, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
             Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) { Text(if (primary) "Continue with Essential" else "Choose " + title) }
+            Button(onClick = { busy = true; kotlinx.coroutines.MainScope().launch { try { val result = authViewModel.initiateSubscription(plan); result.rrr?.let { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://login.remita.net/remita/ecomm/finalize.reg?rrr=" + it))) } } finally { busy = false } } }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { if (busy) CircularProgressIndicator(strokeWidth = 2.dp) else Text("Continue with " + title) }
         }
     }
 }
