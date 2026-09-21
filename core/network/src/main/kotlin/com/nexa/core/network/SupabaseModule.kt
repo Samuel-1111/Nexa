@@ -111,7 +111,7 @@ class AuthRepository(private val client: SupabaseClient) {
             function = "remita-initiate",
             body = buildJsonObject { put("plan", plan) },
         )
-        return response.body<RemitaInitResult>()
+        return kotlinx.serialization.json.Json.decodeFromString<RemitaInitResult>(response.bodyAsText())
     }
 
     suspend fun signInWithEmail(email: String, password: String) {
