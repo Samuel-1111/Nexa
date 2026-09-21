@@ -38,7 +38,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-private enum class OrganizerSection { TASKS, REMINDERS, NOTES, EVENTS }
+private enum class OrganizerSection { TASKS, REMINDERS, EVENTS }
 data class OrganizerState(val tasks: List<Task> = emptyList(), val reminders: List<Reminder> = emptyList(), val notes: List<Note> = emptyList(), val events: List<CalendarEvent> = emptyList())
 
 @HiltViewModel
@@ -61,7 +61,7 @@ class OrganizerViewModel @Inject constructor(
 fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     var section by rememberSaveable(initialSection) { mutableStateOf(runCatching { OrganizerSection.valueOf(initialSection) }.getOrDefault(OrganizerSection.TASKS)) }
-    var showOverview by rememberSaveable(initialSection) { mutableStateOf(initialSection == "OVERVIEW") }
+    var showOverview by rememberSaveable(initialSection) { mutableStateOf(initialSection == "OVERVIEW") }\n    var showNotes by rememberSaveable(initialSection) { mutableStateOf(initialSection == "NOTES") }
     var taskDialog by rememberSaveable { mutableStateOf(false) }
     var reminderDialog by rememberSaveable { mutableStateOf(false) }
     var noteDialog by rememberSaveable { mutableStateOf(false) }
@@ -90,16 +90,16 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
 
     Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 10.dp)) {
         Text("Organizer", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text("Tasks • Reminders • Notes • Events", style = MaterialTheme.typography.bodySmall, color = NexaColors.OnSurfaceMuted)
+        Text("Tasks • Reminders • Events", style = MaterialTheme.typography.bodySmall, color = NexaColors.OnSurfaceMuted)
         Spacer(Modifier.height(7.dp))
         val visibleSections = listOf(OrganizerSection.TASKS, OrganizerSection.REMINDERS, OrganizerSection.EVENTS)
-        ScrollableTabRow(selectedTabIndex = visibleSections.indexOf(if (section == OrganizerSection.NOTES) OrganizerSection.EVENTS else section).coerceAtLeast(0), edgePadding = 0.dp) {
+        TabRow(selectedTabIndex = visibleSections.indexOf(section).coerceAtLeast(0)) {
             visibleSections.forEach { item ->
                 Tab(selected = section == item, onClick = { section = item; showOverview = false }, text = { Text(item.name.lowercase().replaceFirstChar { it.uppercase() }) }, icon = { Icon(when(item){ OrganizerSection.TASKS->Icons.Default.CheckCircle; OrganizerSection.REMINDERS->Icons.Default.Alarm; OrganizerSection.NOTES->Icons.Default.Note; OrganizerSection.EVENTS->Icons.Default.CalendarMonth }, null, Modifier.size(18.dp)) })
             }
         }
         if (showOverview) {
-            OrganizerOverview(state, onSection = { section = it; showOverview = false })
+            OrganizerOverview(state, onSection = { section = it; showOverview = false; showNotes = false })
         } else when(section) {
             OrganizerSection.TASKS -> TaskSection(state.tasks, { taskDialog = true }, viewModel::toggle)
             OrganizerSection.REMINDERS -> ReminderSection(state.reminders, { prepareReminderCreation() })
