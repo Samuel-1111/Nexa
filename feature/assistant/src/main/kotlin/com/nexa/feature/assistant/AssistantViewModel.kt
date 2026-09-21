@@ -50,7 +50,8 @@ class AssistantViewModel @Inject constructor(
                 else {
                     _reply.value = result.reply.ifBlank { "I’m here. Tell me what you need." }
                     _transcript.value = null
-                    _messages.value = _messages.value + AiMessage("local-user-" + System.currentTimeMillis(), "user", clean) + AiMessage("local-assistant-" + System.currentTimeMillis(), "assistant", result.reply.ifBlank { "I’m here. Tell me what you need." })
+                    _messages.value = _messages.value + AiMessage("local-user-" + System.nanoTime(), "user", clean) + AiMessage("local-assistant-" + System.nanoTime(), "assistant", result.reply.ifBlank { "I’m here. Tell me what you need." })
+                    _chats.value = aiGateway.listChats()
                     result.audio_base64?.let { encoded -> viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { playPcm(encoded) } }
                 }
             } catch (e: Exception) {
