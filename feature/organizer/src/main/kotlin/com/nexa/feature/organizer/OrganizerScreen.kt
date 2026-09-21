@@ -100,7 +100,7 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
             }
         }
         if (showOverview) {
-            OrganizerOverview(state, onSection = { section = it; showOverview = false; showNotes = false })
+            OrganizerOverview(state, onSection = { section = it; showOverview = false; showNotes = false }, onNotes = { showOverview = false; showNotes = true })
         } else if (showNotes) {
             NoteSection(state.notes, { noteDialog = true })
         } else when(section) {
@@ -116,7 +116,7 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
 }
 
 @Composable
-private fun OrganizerOverview(state: OrganizerState, onSection: (OrganizerSection) -> Unit) {
+private fun OrganizerOverview(state: OrganizerState, onSection: (OrganizerSection) -> Unit, onNotes: () -> Unit) {
     Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = NexaColors.EventBlueBg)) {
         Column(Modifier.padding(12.dp)) {
             Text("All organizer items", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -125,7 +125,7 @@ private fun OrganizerOverview(state: OrganizerState, onSection: (OrganizerSectio
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 SummaryButton("Tasks", state.tasks.size, Icons.Default.CheckCircle) { onSection(OrganizerSection.TASKS) }
                 SummaryButton("Reminders", state.reminders.size, Icons.Default.Alarm) { onSection(OrganizerSection.REMINDERS) }
-                SummaryButton("Notes", state.notes.size, Icons.Default.Note) { onSection(OrganizerSection.NOTES) }
+                SummaryButton("Notes", state.notes.size, Icons.Default.Note) { onNotes() }
                 SummaryButton("Events", state.events.size, Icons.Default.CalendarMonth) { onSection(OrganizerSection.EVENTS) }
             }
         }
