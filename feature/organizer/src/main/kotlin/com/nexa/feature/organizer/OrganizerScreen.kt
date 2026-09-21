@@ -51,6 +51,10 @@ class OrganizerViewModel @Inject constructor(
     val state = combine(tasks.observeAllTasks(), reminders.observeUpcoming(), notes.observeRecent(), events.observeUpcoming()) { t, r, n, e -> OrganizerState(t, r, n, e) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), OrganizerState())
     fun toggle(task: Task) = viewModelScope.launch { tasks.toggleComplete(task.id) }
+    fun deleteTask(id: com.nexa.core.common.EntityId) = viewModelScope.launch { tasks.delete(id) }
+    fun deleteReminder(id: com.nexa.core.common.EntityId) = viewModelScope.launch { reminders.delete(id) }
+    fun deleteNote(id: com.nexa.core.common.EntityId) = viewModelScope.launch { notes.delete(id) }
+    fun deleteEvent(id: com.nexa.core.common.EntityId) = viewModelScope.launch { events.delete(id) }
     fun addTask(title: String, priority: Priority, due: Instant?) = viewModelScope.launch { if (title.isNotBlank()) tasks.create(title.trim(), priority, due) }
     fun addReminder(title: String, body: String, at: Instant) = viewModelScope.launch { if (title.isNotBlank()) reminders.create(title.trim(), at, ZoneId.systemDefault().id, body.trim().ifBlank { null }) }
     fun addNote(title: String, body: String, ref: String) = viewModelScope.launch { if (body.isNotBlank()) notes.create(title.trim().ifBlank { null }, body.trim(), NoteSource.TEXT, ref.trim().ifBlank { null }) }
@@ -114,12 +118,12 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
         if (showOverview) {
             OrganizerOverview(state, onSection = { section = it; showOverview = false; showNotes = false }, onNotes = { showOverview = false; showNotes = true })
         } else if (showNotes) {
-            NoteSection(state.notes, { noteDialog = true })
+            NoteSection(state.notes, { noteDialog = true }, viewModel::deleteNote)
         } else when(section) {
-            OrganizerSection.TASKS -> TaskSection(state.tasks, { taskDialog = true }, viewModel::toggle)
-            OrganizerSection.REMINDERS -> ReminderSection(state.reminders, { prepareReminderCreation() })
-            OrganizerSection.NOTES -> NoteSection(state.notes, { noteDialog = true })
-            OrganizerSection.EVENTS -> EventSection(state.events, { eventDialog = true })
+            OrganizerSection.TASKS -> TaskSection(state.tasks, { taskDialog = true }, viewModel::toggle, viewModel::deleteTask)
+            OrganizerSection.REMINDERS -> ReminderSection(state.reminders, { prepareReminderCreation() }, viewModel::deleteReminder)
+            OrganizerSection.NOTES -> NoteSection(state.notes, { noteDialog = true }, viewModel::deleteNote)
+            OrganizerSection.EVENTS -> EventSection(state.events, { eventDialog = true }, viewModel::deleteEvent)
         }
     }
     if(taskDialog) TaskDialog({taskDialog=false}) { t,p,d -> viewModel.addTask(t,p,d); taskDialog=false }
@@ -158,7 +162,7 @@ private fun RowScope.SummaryButton(label: String, count: Int, icon: androidx.com
 
 
 @Composable
-private fun TaskSection(tasks: List<Task>, add: () -> Unit, toggle: (Task) -> Unit) {
+private fun TaskSection(tasks: List<Task>, add: () -> Unit, toggle: (Task) -> Unit, delete: (com.nexa.core.common.EntityId) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -185,6 +189,7 @@ private fun TaskSection(tasks: List<Task>, add: () -> Unit, toggle: (Task) -> Un
                                 color = NexaColors.OnSurfaceMuted,
                             )
                         }
+                        IconButton(onClick = { delete(task.id) }) { Icon(Icons.Default.Delete, contentDescription = "Delete task") }
                         AssistChip(onClick = {}, label = { Text(task.priority.name.lowercase().replaceFirstChar { it.uppercase() }) })
                     }
                 }
@@ -194,7 +199,7 @@ private fun TaskSection(tasks: List<Task>, add: () -> Unit, toggle: (Task) -> Un
 }
 
 @Composable
-private fun ReminderSection(reminders: List<Reminder>, add: () -> Unit) {
+private fun ReminderSection(reminders: List<Reminder>, add: () -> Unit, delete: (com.nexa.core.common.EntityId) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -216,6 +221,7 @@ private fun ReminderSection(reminders: List<Reminder>, add: () -> Unit) {
                             Text(reminder.triggerAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEEE, MMM d • h:mm a")), style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
                             reminder.body?.let { Text(it, maxLines = 2, style = MaterialTheme.typography.bodySmall) }
                         }
+                        IconButton(onClick = { delete(reminder.id) }) { Icon(Icons.Default.Delete, contentDescription = "Delete reminder") }
                     }
                 }
             }
@@ -224,7 +230,7 @@ private fun ReminderSection(reminders: List<Reminder>, add: () -> Unit) {
 }
 
 @Composable
-private fun NoteSection(notes: List<Note>, add: () -> Unit) {
+private fun NoteSection(notes: List<Note>, add: () -> Unit, delete: (com.nexa.core.common.EntityId) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -243,6 +249,7 @@ private fun NoteSection(notes: List<Note>, add: () -> Unit) {
                         Spacer(Modifier.height(3.dp))
                         Text(note.body, maxLines = 4)
                         note.reference?.let { Text("Reference: " + it, style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted) }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { IconButton(onClick = { delete(note.id) }) { Icon(Icons.Default.Delete, contentDescription = "Delete note") } }
                     }
                 }
             }
@@ -251,7 +258,7 @@ private fun NoteSection(notes: List<Note>, add: () -> Unit) {
 }
 
 @Composable
-private fun EventSection(events: List<CalendarEvent>, add: () -> Unit) {
+private fun EventSection(events: List<CalendarEvent>, add: () -> Unit, delete: (com.nexa.core.common.EntityId) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -273,6 +280,7 @@ private fun EventSection(events: List<CalendarEvent>, add: () -> Unit) {
                             Text(event.startsAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE, MMM d • h:mm a")), style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
                             event.location?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                         }
+                        IconButton(onClick = { delete(event.id) }) { Icon(Icons.Default.Delete, contentDescription = "Delete event") }
                     }
                 }
             }
