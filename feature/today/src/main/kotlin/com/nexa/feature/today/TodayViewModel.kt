@@ -33,6 +33,8 @@ class TodayViewModel @Inject constructor(
 ) : ViewModel() {
     private val _displayName = MutableStateFlow("there")
     val displayName: StateFlow<String> = _displayName
+    private val _assistantName = MutableStateFlow("NEXA")
+    val assistantName: StateFlow<String> = _assistantName
 
     fun greeting(): String = when (java.time.LocalTime.now().hour) {
         in 5..11 -> "Good morning,"
@@ -43,6 +45,7 @@ class TodayViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             _displayName.value = authRepository.currentDisplayName() ?: "there"
+            _assistantName.value = authRepository.currentAssistantName() ?: "NEXA"
         }
     }
 
