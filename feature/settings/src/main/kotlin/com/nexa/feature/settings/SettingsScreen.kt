@@ -64,7 +64,13 @@ fun SettingsScreen(onOpenMemoryCenter:()->Unit={}, onSignOut:()->Unit={}, onSubs
     }
     if(dialog=="profile") AlertDialog(onDismissRequest={dialog=null},title={Text("Account & Profile")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){OutlinedTextField(editName,{editName=it},label={Text("Your name")},singleLine=true);OutlinedTextField(editPa,{editPa=it},label={Text("What would you like to call your PA?")},singleLine=true)}},confirmButton={Button(onClick={viewModel.saveProfile(editName,editPa){dialog=null}}){Text("Save")}},dismissButton={TextButton({dialog=null}){Text("Cancel")}})
     if(dialog=="apps") InfoDialog("Connected Apps","NEXA currently uses Android notifications, alarms, microphone and your NEXA account. More integrations appear here as they are connected."){dialog=null}
-    if(dialog=="help") InfoDialog("Help & Support","For account or payment problems, contact the NEXA support channel you use for this project. NEXA will never claim an action succeeded unless its service confirms it."){dialog=null}
+    if(dialog=="help") HelpSupportDialog(
+        onDismiss = { dialog = null },
+        onWhatsApp = {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/2349042987385?text=Hello%20NEXA%20Support%2C%20I%20need%20help%20with%20the%20NEXA%20app."))
+            context.startActivity(intent)
+        }
+    )
     if(dialog=="about") InfoDialog("About NEXA","NEXA — Your Personal Assistant. Built for fast, private and permission-based assistance."){dialog=null}
     if(showPlans) PlanDialog(onDismiss={showPlans=false},onStart={plan->viewModel.startPlan(plan){rrr->showPlans=false;context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://login.remita.net/remita/ecomm/finalize.reg?rrr="+rrr)))}})
 }
@@ -73,3 +79,25 @@ fun SettingsScreen(onOpenMemoryCenter:()->Unit={}, onSignOut:()->Unit={}, onSubs
 @Composable private fun InfoDialog(title:String,body:String,onDismiss:()->Unit){AlertDialog(onDismissRequest=onDismiss,title={Text(title)},text={Text(body)},confirmButton={Button(onClick=onDismiss){Text("Done")}})}
 @Composable private fun PlanDialog(onDismiss:()->Unit,onStart:(String)->Unit){AlertDialog(onDismissRequest=onDismiss,title={Text("NEXA Subscription")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){PlanRow("Essential","₦1,000 / month","150 AI • 75 voice",onStart);PlanRow("Pro","₦3,000 / month","750 AI • 300 voice",onStart);PlanRow("Executive","₦5,000 / month","Unlimited AI",onStart)}},confirmButton={TextButton(onClick=onDismiss){Text("Close")}})}
 @Composable private fun PlanRow(name:String,price:String,detail:String,onStart:(String)->Unit){Card(shape=RoundedCornerShape(16.dp)){Column(Modifier.padding(12.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text(name,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));Text(price,color=NexaColors.Primary,fontWeight=FontWeight.Bold)};Text(detail,style=MaterialTheme.typography.bodySmall,color=NexaColors.OnSurfaceMuted);Spacer(Modifier.height(5.dp));Button(onClick={onStart(name.uppercase())},modifier=Modifier.fillMaxWidth()){Text("Continue")}}}}
+
+@Composable
+private fun HelpSupportDialog(onDismiss: () -> Unit, onWhatsApp: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Help & Support") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Need help, want to report a problem, or have feedback? Our support line is available on WhatsApp.")
+                Text("WhatsApp: 0904 298 7385", fontWeight = FontWeight.Bold)
+            }
+        },
+        confirmButton = {
+            Button(onClick = onWhatsApp) {
+                Icon(Icons.Default.WhatsApp, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Chat on WhatsApp")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
+}
