@@ -18,6 +18,8 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
+    private val _lastSignupEmail = MutableStateFlow<String?>(null)
+    val lastSignupEmail: StateFlow<String?> = _lastSignupEmail.asStateFlow()
 
     fun clearMessage() { _message.value = null }
 
@@ -55,10 +57,30 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
             require(clean.contains("@") && clean.contains(".")) { "Enter a valid Gmail address." }
             require(password.length >= 6) { "Password must be at least 6 characters." }
             authRepository.createAccount(clean, password)
-            _message.value = "Account created. Check your email and tap the NEXA confirmation link to continue."
+            _lastSignupEmail.value = clean
+            _message.value = "Confirmation email requested. Check your inbox and Spam/Junk folder, then tap the NEXA confirmation link."
             onSent()
         } catch (e: Exception) { _message.value = friendlyError(e) }
         finally { _busy.value = false }
+    }
+
+    fun resendConfirmation(email: String = _lastSignupEmail.value.orEmpty()) = viewModelScope.launch {
+        val clean = email.trim()
+        if (clean.isBlank()) {
+            _message.value = "Enter the email you used to create your NEXA account."
+            return@launch
+        }
+        _busy.value = true
+        _message.value = null
+        try {
+            authRepository.resendSignupConfirmation(clean)
+            _lastSignupEmail.value = clean
+            _message.value = "A new confirmation email was requested. Check your inbox and Spam/Junk folder."
+        } catch (e: Exception) {
+            _message.value = friendlyError(e)
+        } finally {
+            _busy.value = false
+        }
     }
 
     fun signOut() = viewModelScope.launch {
