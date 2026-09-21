@@ -14,16 +14,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.core.content.ContextCompat
 import com.nexa.app.navigation.NexaApp
+import io.github.jan.supabase.SupabaseClient
+import javax.inject.Inject
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject lateinit var supabase: SupabaseClient
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        supabase.handleDeeplinks(intent)
         requestNotificationPermissionIfNeeded()
         requestExactAlarmPermissionIfNeeded()
         setContent {
@@ -33,6 +37,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        supabase.handleDeeplinks(intent)
     }
 
     private fun requestNotificationPermissionIfNeeded() {
