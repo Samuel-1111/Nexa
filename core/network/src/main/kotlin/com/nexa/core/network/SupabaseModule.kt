@@ -4,7 +4,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.builtin.OTP
+import io.github.jan.supabase.auth.providers.builtin.Email
 import io.ktor.client.HttpClient
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -122,9 +122,17 @@ class AuthRepository(private val client: SupabaseClient, private val httpClient:
         return kotlinx.serialization.json.Json.decodeFromString<RemitaInitResult>(response.bodyAsText())
     }
 
-    suspend fun sendMagicLink(email: String) {
-        client.auth.signInWith(OTP) {
+    suspend fun signInWithPassword(email: String, password: String) {
+        client.auth.signInWith(Email) {
             this.email = email.trim()
+            this.password = password
+        }
+    }
+
+    suspend fun createAccount(email: String, password: String) {
+        client.auth.signUpWith(Email, redirectUrl = "nexa://auth") {
+            this.email = email.trim()
+            this.password = password
         }
     }
 
