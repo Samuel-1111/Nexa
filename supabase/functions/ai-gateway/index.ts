@@ -9,8 +9,10 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const TOOLS = [{ functionDeclarations: [
   { name: "create_task", description: "Create a task for the authenticated user.", parameters: { type: "OBJECT", properties: { title: { type: "STRING" }, priority: { type: "STRING", enum: ["NONE","LOW","MEDIUM","HIGH"] }, due_at: { type: "STRING" } }, required: ["title"] } },
+  { name: "complete_task", description: "Mark one of the authenticated user's tasks completed by task id.", parameters: { type: "OBJECT", properties: { task_id: { type: "STRING" } }, required: ["task_id"] } },
   { name: "create_reminder", description: "Create a reminder for the authenticated user.", parameters: { type: "OBJECT", properties: { title: { type: "STRING" }, trigger_at: { type: "STRING" }, timezone: { type: "STRING" } }, required: ["title","trigger_at","timezone"] } },
   { name: "create_note", description: "Create a note for the authenticated user.", parameters: { type: "OBJECT", properties: { body: { type: "STRING" }, title: { type: "STRING" } }, required: ["body"] } },
+  { name: "create_event", description: "Create a calendar event for the authenticated user.", parameters: { type: "OBJECT", properties: { title: { type: "STRING" }, description: { type: "STRING" }, location: { type: "STRING" }, starts_at: { type: "STRING" }, ends_at: { type: "STRING" }, timezone: { type: "STRING" } }, required: ["title","starts_at","ends_at","timezone"] } },
   { name: "suggest_memory", description: "Suggest a memory. Never activate memory without explicit user approval.", parameters: { type: "OBJECT", properties: { content: { type: "STRING" }, category: { type: "STRING", enum: ["PREFERENCE","PERSON","GOAL","ROUTINE","IMPORTANT_DATE","WORK","SCHOOL","WRITING_STYLE","OTHER"] } }, required: ["content","category"] } },
   { name: "query_today", description: "Read the authenticated user's open tasks, reminders and today's events.", parameters: { type: "OBJECT", properties: {} } },
 ] }];
@@ -145,8 +147,28 @@ async function executeTool(client: any, userId: string, name: string, args: Reco
     case "create_reminder": {
       const title = String(args.title ?? "").trim().slice(0, 500);
       if (!title || !args.trigger_at || !args.timezone) return { ok: false, error: "Reminder title, time and timezone are required." };
-      const { data, error } = await client.from("reminders").insert({ owner_id: userId, title, trigger_at: args.trigger_at, timezone: args.timezone, schedule_state: "UNSCHEDULED" }).select().single();
+      const { data, error } = await client.from("reminders").insert({ owner_id: userId, title, trigger_at: args.trigger_at, timezone: args.timezone, schedule_state: "SCHEDULED" }).select().single();
       return error ? { ok: false, error: error.message } : { ok: true, reminder: data };
+    }
+    case "complete_task": {
+      const taskId = String(args.task_id ?? "").trim();
+      if (!taskId) return { ok: false, error: "Task id is required." };
+      const { data, error } = await client.from("tasks").update({ status: "COMPLETED", completed_at: new Date().toISOString() }).eq("id", taskId).eq("owner_id", userId).is("deleted_at", null).select("id,title,status,completed_at").maybeSingle();
+      return error ? { ok: false, error: error.message } : data ? { ok: true, task: data } : { ok: false, error: "Task not found." };
+    }
+    case "create_event": {
+      const title = String(args.title ?? "").trim().slice(0, 500);
+      if (!title || !args.starts_at || !args.ends_at || !args.timezone) return { ok: false, error: "Event title, start time, end time and timezone are required." };
+      const { data, error } = await client.from("calendar_events").insert({
+        owner_id: userId,
+        title,
+        description: args.description ? String(args.description).slice(0, 4000) : null,
+        location: args.location ? String(args.location).slice(0, 500) : null,
+        starts_at: args.starts_at,
+        ends_at: args.ends_at,
+        timezone: args.timezone,
+      }).select().single();
+      return error ? { ok: false, error: error.message } : { ok: true, event: data };
     }
     case "create_note": {
       const noteBody = String(args.body ?? "").trim().slice(0, 8000);
