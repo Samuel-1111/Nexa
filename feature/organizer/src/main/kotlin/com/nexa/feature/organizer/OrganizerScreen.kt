@@ -97,7 +97,7 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
         Text("Organizer", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text("Tasks • Reminders • Events", style = MaterialTheme.typography.bodySmall, color = NexaColors.OnSurfaceMuted)
         Spacer(Modifier.height(7.dp))
-        val visibleSections = listOf(OrganizerSection.TASKS, OrganizerSection.REMINDERS, OrganizerSection.NOTES, OrganizerSection.EVENTS)
+        val visibleSections = listOf(OrganizerSection.TASKS, OrganizerSection.REMINDERS, OrganizerSection.EVENTS)
         TabRow(selectedTabIndex = visibleSections.indexOf(section).coerceAtLeast(0)) {
             visibleSections.forEach { item ->
                 Tab(
