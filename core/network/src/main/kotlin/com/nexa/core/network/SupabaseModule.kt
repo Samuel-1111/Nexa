@@ -46,6 +46,15 @@ class AuthRepository(private val client: SupabaseClient) {
         }.getOrNull()
     }
 
+    suspend fun isOnboardingComplete(): Boolean {
+        val id = currentUserId ?: return false
+        return runCatching {
+            @Serializable data class Row(@SerialName("onboarding_completed") val value: Boolean = false)
+            client.from("profiles").select(columns = Columns.list("onboarding_completed")) { filter { eq("id", id) } }
+                .decodeSingle<Row>().value
+        }.getOrDefault(false)
+    }
+
     suspend fun saveOnboardingProfile(displayName: String, assistantName: String) {
         val id = currentUserId ?: error("Not authenticated")
         client.from("profiles").update({
