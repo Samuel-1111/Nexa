@@ -26,6 +26,7 @@ fun AuthScreen(
     var password by rememberSaveable { mutableStateOf("") }
     val busy by viewModel.busy.collectAsState()
     val message by viewModel.message.collectAsState()
+    val lastSignupEmail by viewModel.lastSignupEmail.collectAsState()
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).systemBarsPadding()
@@ -79,6 +80,15 @@ fun AuthScreen(
                     Text(it, Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                         color = if (it.startsWith("Check your email") || it.startsWith("Account created")) Color(0xFF2E7D32) else Color(0xFFC62828),
                         style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                }
+            }
+            if (createAccount && lastSignupEmail != null) {
+                Spacer(Modifier.height(6.dp))
+                TextButton(
+                    onClick = { viewModel.resendConfirmation() },
+                    enabled = !busy,
+                ) {
+                    Text("Resend confirmation email")
                 }
             }
             Spacer(Modifier.height(8.dp))
