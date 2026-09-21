@@ -37,6 +37,7 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
     }
 
     suspend fun isOnboardingComplete(): Boolean = authRepository.isOnboardingComplete()
+    suspend fun hasActiveSubscription(): Boolean = authRepository.subscriptionAccess()
 
     fun signUp(email: String, password: String, confirmPassword: String, onOtpSent: (String) -> Unit) = viewModelScope.launch {
         _busy.value = true
