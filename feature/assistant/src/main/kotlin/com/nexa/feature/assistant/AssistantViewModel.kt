@@ -114,7 +114,7 @@ class AssistantViewModel @Inject constructor(
             val title = value.substringAfter("task ", "").trim()
             if (title.isBlank()) return "Tell me what task you want to add."
             taskRepository.create(title, Priority.NONE, null)
-            return "Done — I added "" + title + "" to your tasks."
+            return "Done — I added “" + title + "” to your tasks."
         }
         if (normalized.startsWith("take a note ") || normalized.startsWith("add note ") || normalized.startsWith("note ")) {
             val body = when {
@@ -130,7 +130,7 @@ class AssistantViewModel @Inject constructor(
             val prefix = if (normalized.startsWith("remind me to ")) "remind me to " else "set a reminder "
             val raw = value.substring(prefix.length).trim()
             val atMatch = Regex("(.+?)\\s+at\\s+(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?$", RegexOption.IGNORE_CASE).matchEntire(raw)
-            if (atMatch == null) return "I can set that reminder, but include a time like "at 6:30 pm"."
+            if (atMatch == null) return "I can set that reminder, but include a time like “at 6:30 pm”."
             val title = atMatch.groupValues[1].trim()
             var hour = atMatch.groupValues[2].toInt()
             val minute = atMatch.groupValues[3].ifBlank { "0" }.toInt()
@@ -143,7 +143,7 @@ class AssistantViewModel @Inject constructor(
             var target = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
             if (!target.isAfter(now)) target = target.plusDays(1)
             reminderRepository.create(title, target.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault().id, null)
-            return "Done — I set "" + title + "" for " + target.format(DateTimeFormatter.ofPattern("EEE, MMM d • h:mm a")) + "."
+            return "Done — I set “" + title + "” for " + target.format(DateTimeFormatter.ofPattern("EEE, MMM d • h:mm a")) + "."
         }
         if (normalized == "help" || normalized == "what can you do") {
             return "I can manage your tasks, reminders, notes and events without AI. For general questions and conversation, I can use the AI assistant when it’s available."
