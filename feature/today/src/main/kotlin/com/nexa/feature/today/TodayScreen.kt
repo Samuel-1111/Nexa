@@ -11,7 +11,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexa.core.designsystem.NexaColors
 import com.nexa.core.model.TaskStatus
 import java.time.format.DateTimeFormatter
@@ -20,54 +19,119 @@ import java.time.format.DateTimeFormatter
 fun TodayRoute(
     onOpenAssistant: () -> Unit = {},
     onOpenOrganizer: (String) -> Unit = {},
-    viewModel: TodayViewModel = hiltViewModel(),
+    viewModel: TodayViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     val displayName by viewModel.displayName.collectAsState()
     val assistantName by viewModel.assistantName.collectAsState()
+
     Scaffold { padding ->
         when (state) {
-            TodayUiState.Loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            TodayUiState.Loading -> Box(
+                Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator() }
+
             is TodayUiState.Loaded -> {
                 val data = state as TodayUiState.Loaded
                 Column(
-                    Modifier.fillMaxSize().background(NexaColors.Background).padding(padding).padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    Modifier
+                        .fillMaxSize()
+                        .background(NexaColors.Background)
+                        .padding(padding)
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
+                    // Compact header: everything from NEXA to the bottom action fits
+                    // on one normal phone screen without vertical scrolling.
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text(assistantName, style = MaterialTheme.typography.titleLarge, color = NexaColors.Primary, fontWeight = FontWeight.ExtraBold)
-                            Text("Your Personal Assistant", style = MaterialTheme.typography.labelSmall, color = NexaColors.PrimaryDark)
+                            Text(
+                                assistantName,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = NexaColors.Primary,
+                                fontWeight = FontWeight.ExtraBold,
+                            )
+                            Text(
+                                "Your Personal Assistant",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = NexaColors.PrimaryDark,
+                            )
                         }
-                        Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface) {
-                            Icon(Icons.Default.Person, null, Modifier.padding(7.dp), tint = NexaColors.Primary)
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.surface,
+                        ) {
+                            Icon(Icons.Default.Person, null, Modifier.padding(6.dp), tint = NexaColors.Primary)
                         }
                     }
-                    Column {
+
+                    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                         Text(viewModel.greeting(), style = MaterialTheme.typography.titleMedium)
-                        Text("$displayName ☀️", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        Text(java.time.LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy")), style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
+                        Text(
+                            displayName,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                        )
+                        Text(
+                            java.time.LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy")),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = NexaColors.OnSurfaceMuted,
+                        )
                     }
 
-                    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = NexaColors.EventBlueBg)) {
-                        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.AutoAwesome, null, tint = NexaColors.Primary)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Today is a new opportunity to build the life you want.", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = NexaColors.EventBlueBg),
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, null, tint = NexaColors.Primary, Modifier.size(18.dp))
+                            Spacer(Modifier.width(7.dp))
+                            Text(
+                                "Today is a new opportunity to build the life you want.",
+                                Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 2,
+                            )
+                            Icon(Icons.Default.ChevronRight, null, tint = NexaColors.Primary, Modifier.size(18.dp))
                         }
                     }
 
-                    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = NexaColors.Surface)) {
-                        Column(Modifier.padding(11.dp)) {
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = NexaColors.Surface),
+                    ) {
+                        Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Text("Daily Overview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, Modifier.weight(1f))
-                                TextButton(onClick = { onOpenOrganizer("OVERVIEW") }, contentPadding = PaddingValues(0.dp)) { Text("View all") }
+                                Text(
+                                    "Daily Overview",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    Modifier.weight(1f),
+                                )
+                                TextButton(
+                                    onClick = { onOpenOrganizer("OVERVIEW") },
+                                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp),
+                                ) { Text("View all") }
                             }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                OverviewCard("Tasks", data.tasks.count { it.status == TaskStatus.OPEN }, Icons.Default.CheckCircle, NexaColors.TaskGreenBg) { onOpenOrganizer("TASKS") }
-                                OverviewCard("Reminders", data.reminders.size, Icons.Default.Notifications, NexaColors.ReminderOrangeBg) { onOpenOrganizer("REMINDERS") }
-                                OverviewCard("Events", data.eventCount, Icons.Default.CalendarMonth, NexaColors.EventBlueBg) { onOpenOrganizer("EVENTS") }
-                                OverviewCard("Notes", data.noteCount, Icons.Default.Note, NexaColors.NoteVioletBg) { onOpenOrganizer("NOTES") }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                OverviewCard("Tasks", data.tasks.size, Icons.Default.CheckCircle, NexaColors.TaskGreenBg) {
+                                    onOpenOrganizer("TASKS")
+                                }
+                                OverviewCard("Reminders", data.reminders.size, Icons.Default.Notifications, NexaColors.ReminderOrangeBg) {
+                                    onOpenOrganizer("REMINDERS")
+                                }
+                                OverviewCard("Events", data.eventCount, Icons.Default.CalendarMonth, NexaColors.EventBlueBg) {
+                                    onOpenOrganizer("EVENTS")
+                                }
+                                OverviewCard("Notes", data.noteCount, Icons.Default.Note, NexaColors.NoteVioletBg) {
+                                    onOpenOrganizer("NOTES")
+                                }
                             }
                         }
                     }
@@ -78,13 +142,26 @@ fun TodayRoute(
                         empty = data.tasks.isEmpty(),
                     ) {
                         data.tasks.take(2).forEach { task ->
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                Modifier.fillMaxWidth().height(30.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 Checkbox(
                                     checked = task.status == TaskStatus.COMPLETED,
-                                    onCheckedChange = { viewModel.completeTask(task) },
-                                    modifier = Modifier.size(32.dp),
+                                    onCheckedChange = { viewModel.toggleTask(task) },
+                                    modifier = Modifier.size(30.dp),
                                 )
-                                Text(task.title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                Spacer(Modifier.width(5.dp))
+                                Text(
+                                    task.title,
+                                    Modifier.weight(1f),
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                if (task.status == TaskStatus.COMPLETED) {
+                                    Text("Done", style = MaterialTheme.typography.labelSmall, color = NexaColors.Primary)
+                                }
                             }
                         }
                     }
@@ -95,27 +172,36 @@ fun TodayRoute(
                         empty = data.reminders.isEmpty(),
                     ) {
                         data.reminders.take(2).forEach { reminder ->
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.NotificationsNone, null, Modifier.size(20.dp), tint = NexaColors.ReminderOrange)
-                                Spacer(Modifier.width(8.dp))
+                            Row(
+                                Modifier.fillMaxWidth().height(31.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Default.NotificationsNone, null, Modifier.size(18.dp), tint = NexaColors.ReminderOrange)
+                                Spacer(Modifier.width(7.dp))
                                 Column(Modifier.weight(1f)) {
-                                    Text(reminder.title, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                                    Text(reminder.triggerAt.atZone(java.time.ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE • h:mm a")), style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
+                                    Text(reminder.title, fontWeight = FontWeight.SemiBold, maxLines = 1, style = MaterialTheme.typography.bodySmall)
+                                    Text(
+                                        reminder.triggerAt.atZone(java.time.ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE • h:mm a")),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = NexaColors.OnSurfaceMuted,
+                                    )
                                 }
                             }
                         }
                     }
 
+                    Spacer(Modifier.weight(1f))
+
                     Button(
                         onClick = onOpenAssistant,
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(25.dp),
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(24.dp),
                     ) {
-                        Icon(Icons.Default.Mic, null, Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Talk to NEXA", fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.Mic, null, Modifier.size(19.dp))
+                        Spacer(Modifier.width(7.dp))
+                        Text("Talk to $assistantName", fontWeight = FontWeight.Bold, maxLines = 1)
                         Spacer(Modifier.weight(1f))
-                        Icon(Icons.Default.ChevronRight, null)
+                        Icon(Icons.Default.ChevronRight, null, Modifier.size(19.dp))
                     }
                 }
             }
@@ -124,13 +210,27 @@ fun TodayRoute(
 }
 
 @Composable
-private fun RowScope.OverviewCard(label: String, count: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, background: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.weight(1f).height(76.dp), shape = RoundedCornerShape(13.dp), colors = CardDefaults.cardColors(containerColor = background)) {
-        Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Icon(icon, null, Modifier.size(18.dp), tint = NexaColors.Primary)
+private fun RowScope.OverviewCard(
+    label: String,
+    count: Int,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    background: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit,
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.weight(1f).height(62.dp),
+        shape = RoundedCornerShape(11.dp),
+        colors = CardDefaults.cardColors(containerColor = background),
+    ) {
+        Column(
+            Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Icon(icon, null, Modifier.size(16.dp), tint = NexaColors.Primary)
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(count.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.width(3.dp))
+                Text(count.toString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(2.dp))
                 Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
             }
         }
@@ -138,15 +238,29 @@ private fun RowScope.OverviewCard(label: String, count: Int, icon: androidx.comp
 }
 
 @Composable
-private fun CompactSection(title: String, viewAll: () -> Unit, empty: Boolean, content: @Composable ColumnScope.() -> Unit) {
-    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = NexaColors.Surface)) {
-        Column(Modifier.padding(horizontal = 11.dp, vertical = 7.dp)) {
+private fun CompactSection(
+    title: String,
+    viewAll: () -> Unit,
+    empty: Boolean,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = NexaColors.Surface),
+    ) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 5.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, Modifier.weight(1f))
-                TextButton(onClick = viewAll, contentPadding = PaddingValues(0.dp)) { Text("View all") }
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, Modifier.weight(1f))
+                TextButton(
+                    onClick = viewAll,
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp),
+                ) { Text("View all") }
             }
-            if (empty) Text("Nothing here yet.", style = MaterialTheme.typography.bodySmall, color = NexaColors.OnSurfaceMuted)
-            else content()
+            if (empty) {
+                Text("Nothing here yet.", style = MaterialTheme.typography.bodySmall, color = NexaColors.OnSurfaceMuted)
+            } else {
+                content()
+            }
         }
     }
 }
