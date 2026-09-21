@@ -53,6 +53,7 @@ class OrganizerViewModel @Inject constructor(
 fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     var section by rememberSaveable(initialSection) { mutableStateOf(runCatching { OrganizerSection.valueOf(initialSection) }.getOrDefault(OrganizerSection.TASKS)) }
+    val overviewMode = initialSection == "OVERVIEW"
     var taskDialog by rememberSaveable { mutableStateOf(false) }
     var reminderDialog by rememberSaveable { mutableStateOf(false) }
     var noteDialog by rememberSaveable { mutableStateOf(false) }
@@ -66,7 +67,10 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
                 Tab(selected = section == item, onClick = { section = item }, text = { Text(item.name.lowercase().replaceFirstChar { it.uppercase() }) }, icon = { Icon(when(item){ OrganizerSection.TASKS->Icons.Default.CheckCircle; OrganizerSection.REMINDERS->Icons.Default.Alarm; OrganizerSection.NOTES->Icons.Default.Note; OrganizerSection.EVENTS->Icons.Default.CalendarMonth }, null, Modifier.size(18.dp)) })
             }
         }
-        Spacer(Modifier.height(8.dp))
+        if (overviewMode) {
+            OrganizerOverview(state, onSection = { section = it })
+            Spacer(Modifier.height(8.dp))
+        }
         when(section) {
             OrganizerSection.TASKS -> TaskSection(state.tasks, { taskDialog = true }, viewModel::toggle)
             OrganizerSection.REMINDERS -> ReminderSection(state.reminders, { reminderDialog = true })
@@ -78,6 +82,34 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
     if(reminderDialog) ReminderDialog({reminderDialog=false}) { t,b,d -> viewModel.addReminder(t,b,d); reminderDialog=false }
     if(noteDialog) NoteDialog({noteDialog=false}) { t,b,r -> viewModel.addNote(t,b,r); noteDialog=false }
     if(eventDialog) EventDialog({eventDialog=false}) { t,d,l,s,e -> viewModel.addEvent(t,d,l,s,e); eventDialog=false }
+}
+
+@Composable
+private fun OrganizerOverview(state: OrganizerState, onSection: (OrganizerSection) -> Unit) {
+    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = NexaColors.EventBlueBg)) {
+        Column(Modifier.padding(12.dp)) {
+            Text("All organizer items", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Jump directly to what you want to manage.", style = MaterialTheme.typography.bodySmall, color = NexaColors.OnSurfaceMuted)
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                SummaryButton("Tasks", state.tasks.size, Icons.Default.CheckCircle) { onSection(OrganizerSection.TASKS) }
+                SummaryButton("Reminders", state.reminders.size, Icons.Default.Alarm) { onSection(OrganizerSection.REMINDERS) }
+                SummaryButton("Notes", state.notes.size, Icons.Default.Note) { onSection(OrganizerSection.NOTES) }
+                SummaryButton("Events", state.events.size, Icons.Default.CalendarMonth) { onSection(OrganizerSection.EVENTS) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.SummaryButton(label: String, count: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+    Card(onClick = onClick, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
+        Column(Modifier.padding(7.dp)) {
+            Icon(icon, null, Modifier.size(17.dp), tint = NexaColors.Primary)
+            Text(count.toString(), fontWeight = FontWeight.Bold)
+            Text(label, style = MaterialTheme.typography.labelSmall)
+        }
+    }
 }
 
 @Composable private fun TaskSection(tasks: List<Task>, add: () -> Unit, toggle: (Task) -> Unit) {
