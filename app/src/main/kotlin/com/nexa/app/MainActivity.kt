@@ -42,8 +42,6 @@ class MainActivity : ComponentActivity() {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
-}
-
     private fun requestExactAlarmPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = getSystemService(android.app.AlarmManager::class.java)
@@ -54,3 +52,5 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+}
