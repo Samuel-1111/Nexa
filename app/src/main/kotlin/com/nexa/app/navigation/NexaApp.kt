@@ -89,7 +89,12 @@ fun NexaApp() {
             authMode = null
             LaunchedEffect(Unit) {
                 onboardingComplete = authViewModel.isOnboardingComplete()
-                if (onboardingComplete == true) subscriptionActive = authViewModel.hasActiveSubscription()
+                if (onboardingComplete == true) {
+                    while (true) {
+                        subscriptionActive = authViewModel.hasActiveSubscription()
+                        kotlinx.coroutines.delay(60_000)
+                    }
+                }
             }
             when {
                 onboardingComplete == false -> PersonalizeNexaScreen(
