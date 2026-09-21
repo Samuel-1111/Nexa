@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.nexa.core.network.AiGatewayClient
 import com.nexa.core.network.AiChatSummary
 import com.nexa.core.network.AiMessage
+import com.nexa.core.network.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +21,10 @@ import javax.inject.Inject
 @HiltViewModel
 class AssistantViewModel @Inject constructor(
     private val aiGateway: AiGatewayClient,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
+    private val _assistantName = MutableStateFlow("NEXA")
+    val assistantName: StateFlow<String> = _assistantName.asStateFlow()
     private val _reply = MutableStateFlow<String?>(null)
     private val _messages = MutableStateFlow<List<AiMessage>>(emptyList())
     val messages: StateFlow<List<AiMessage>> = _messages.asStateFlow()
@@ -35,7 +39,7 @@ class AssistantViewModel @Inject constructor(
     val error: StateFlow<String?> = _error.asStateFlow()
     private var chatId: String? = null
 
-    init { viewModelScope.launch { _chats.value = aiGateway.listChats(); _chats.value.firstOrNull()?.let { selectChat(it.id) } } }
+    init { viewModelScope.launch { _assistantName.value = authRepository.currentAssistantName() ?: "NEXA"; _chats.value = aiGateway.listChats(); _chats.value.firstOrNull()?.let { selectChat(it.id) } } }
 
     fun ask(message: String) {
         val clean = message.trim()
