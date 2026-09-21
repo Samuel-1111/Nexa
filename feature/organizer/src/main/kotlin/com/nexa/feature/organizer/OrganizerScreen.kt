@@ -112,24 +112,127 @@ private fun RowScope.SummaryButton(label: String, count: Int, icon: androidx.com
     }
 }
 
-@Composable private fun TaskSection(tasks: List<Task>, add: () -> Unit, toggle: (Task) -> Unit) {
+
+@Composable
+private fun TaskSection(tasks: List<Task>, add: () -> Unit, toggle: (Task) -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically) { Column(Modifier.weight(1f)){ Text("Tasks", style=MaterialTheme.typography.titleLarge, fontWeight=FontWeight.Bold); Text(tasks.count{it.status==TaskStatus.OPEN}.toString()+" open • "+tasks.count{it.status==TaskStatus.COMPLETED}+" completed", style=MaterialTheme.typography.labelSmall, color=NexaColors.OnSurfaceMuted) }; FilledTonalButton(onClick=add){Icon(Icons.Default.Add,null); Text("Task")} }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Tasks", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(tasks.count { it.status == TaskStatus.OPEN }.toString() + " open • " + tasks.count { it.status == TaskStatus.COMPLETED } + " completed", style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
+            }
+            FilledTonalButton(onClick = add) { Icon(Icons.Default.Add, null); Text("Task") }
+        }
         Spacer(Modifier.height(7.dp))
-        if(tasks.isEmpty()) EmptyState("No tasks yet","Add a task and keep it here until you finish it.") else LazyColumn(verticalArrangement=Arrangement.spacedBy(7.dp), contentPadding=PaddingValues(bottom=16.dp)){ items(tasks,key={it.id.value}){task -> Card(shape=RoundedCornerShape(18.dp)){ Row(Modifier.fillMaxWidth().padding(12.dp),verticalAlignment=Alignment.CenterVertically){ Checkbox(task.status==TaskStatus.COMPLETED,{toggle(task)}); Column(Modifier.weight(1f)){ Text(task.title,fontWeight=FontWeight.SemiBold); Text(if(task.status==TaskStatus.COMPLETED) "Completed" else if(task.dueAt!=null) task.dueAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE, MMM d • h:mm a")) else "No due date",style=MaterialTheme.typography.labelSmall,color=NexaColors.OnSurfaceMuted)} AssistChip(onClick={},label={Text(task.priority.name.lowercase().replaceFirstChar{it.uppercase()})}) } } } } }
+        if (tasks.isEmpty()) EmptyState("No tasks yet", "Add a task and keep it here until you finish it.")
+        else LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+            items(tasks, key = { it.id.value }) { task ->
+                Card(shape = RoundedCornerShape(18.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = task.status == TaskStatus.COMPLETED, onCheckedChange = { toggle(task) })
+                        Column(Modifier.weight(1f)) {
+                            Text(task.title, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                if (task.status == TaskStatus.COMPLETED) "Completed"
+                                else if (task.dueAt != null) task.dueAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE, MMM d • h:mm a"))
+                                else "No due date",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = NexaColors.OnSurfaceMuted,
+                            )
+                        }
+                        AssistChip(onClick = {}, label = { Text(task.priority.name.lowercase().replaceFirstChar { it.uppercase() }) })
+                    }
+                }
+            }
+        }
     }
 }
 
-@Composable private fun ReminderSection(reminders: List<Reminder>, add: () -> Unit) {
-    Column(Modifier.fillMaxSize()){ Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){ Column(Modifier.weight(1f)){Text("Reminders",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text("Scheduled alarms and notifications",style=MaterialTheme.typography.labelSmall,color=NexaColors.OnSurfaceMuted)};FilledTonalButton(onClick=add){Icon(Icons.Default.Add,null);Text("Reminder")}};Spacer(Modifier.height(7.dp));if(reminders.isEmpty()) EmptyState("No reminders","Create a reminder with a date and alarm time.") else LazyColumn(verticalArrangement=Arrangement.spacedBy(7.dp),contentPadding=PaddingValues(bottom=16.dp)){items(reminders,key={it.id.value}){r->Card(shape=RoundedCornerShape(18.dp)){Row(Modifier.fillMaxWidth().padding(12.dp),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.Alarm,null,tint=NexaColors.ReminderOrange);Spacer(Modifier.width(10.dp));Column(Modifier.weight(1f)){Text(r.title,fontWeight=FontWeight.SemiBold);Text(r.triggerAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEEE, MMM d • h:mm a")),style=MaterialTheme.typography.labelSmall,color=NexaColors.OnSurfaceMuted);r.body?.let{Text(it,maxLines=2,style=MaterialTheme.typography.bodySmall)}}}}}}}}
+@Composable
+private fun ReminderSection(reminders: List<Reminder>, add: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Reminders", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("Scheduled alarms and notifications", style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
+            }
+            FilledTonalButton(onClick = add) { Icon(Icons.Default.Add, null); Text("Reminder") }
+        }
+        Spacer(Modifier.height(7.dp))
+        if (reminders.isEmpty()) EmptyState("No reminders", "Create a reminder with a date and alarm time.")
+        else LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+            items(reminders, key = { it.id.value }) { reminder ->
+                Card(shape = RoundedCornerShape(18.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Alarm, null, tint = NexaColors.ReminderOrange)
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(reminder.title, fontWeight = FontWeight.SemiBold)
+                            Text(reminder.triggerAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEEE, MMM d • h:mm a")), style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
+                            reminder.body?.let { Text(it, maxLines = 2, style = MaterialTheme.typography.bodySmall) }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
-@Composable private fun NoteSection(notes: List<Note>, add: () -> Unit) {
-    Column(Modifier.fillMaxSize()){Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Notes",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text("Subject, body and reference",style=MaterialTheme.typography.labelSmall,color=NexaColors.OnSurfaceMuted)};FilledTonalButton(onClick=add){Icon(Icons.Default.Add,null);Text("Note")}};Spacer(Modifier.height(7.dp));if(notes.isEmpty()) EmptyState("No notes","Capture ideas, details and references.") else LazyColumn(verticalArrangement=Arrangement.spacedBy(7.dp),contentPadding=PaddingValues(bottom=16.dp)){items(notes,key={it.id.value}){n->Card(shape=RoundedCornerShape(18.dp)){Column(Modifier.fillMaxWidth().padding(12.dp)){Text(n.title ?: "Untitled note",fontWeight=FontWeight.Bold);Spacer(Modifier.height(3.dp));Text(n.body,maxLines=4);n.reference?.let{Text("Reference: "+it,style=MaterialTheme.typography.labelSmall,color=NexaColors.OnSurfaceMuted)}}}}}}}}
+@Composable
+private fun NoteSection(notes: List<Note>, add: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Notes", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("Subject, body and reference", style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
+            }
+            FilledTonalButton(onClick = add) { Icon(Icons.Default.Add, null); Text("Note") }
+        }
+        Spacer(Modifier.height(7.dp))
+        if (notes.isEmpty()) EmptyState("No notes", "Capture ideas, details and references.")
+        else LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+            items(notes, key = { it.id.value }) { note ->
+                Card(shape = RoundedCornerShape(18.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                        Text(note.title ?: "Untitled note", fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(3.dp))
+                        Text(note.body, maxLines = 4)
+                        note.reference?.let { Text("Reference: " + it, style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted) }
+                    }
+                }
+            }
+        }
+    }
 }
 
-@Composable private fun EventSection(events: List<CalendarEvent>, add: () -> Unit) {
-    Column(Modifier.fillMaxSize()){Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Events",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text("Title, date, time and location",style=MaterialTheme.typography.labelSmall,color=NexaColors.OnSurfaceMuted)};FilledTonalButton(onClick=add){Icon(Icons.Default.Add,null);Text("Event")}};Spacer(Modifier.height(7.dp));if(events.isEmpty()) EmptyState("No events","Add meetings, appointments or plans.") else LazyColumn(verticalArrangement=Arrangement.spacedBy(7.dp),contentPadding=PaddingValues(bottom=16.dp)){items(events,key={it.id.value}){e->Card(shape=RoundedCornerShape(18.dp)){Row(Modifier.fillMaxWidth().padding(12.dp),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.Event,null,tint=NexaColors.Primary);Spacer(Modifier.width(10.dp));Column(Modifier.weight(1f)){Text(e.title,fontWeight=FontWeight.SemiBold);Text(e.startsAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE, MMM d • h:mm a")),style=MaterialTheme.typography.labelSmall,color=NexaColors.OnSurfaceMuted);e.location?.let{Text(it,style=MaterialTheme.typography.bodySmall)}}}}}}}}
+@Composable
+private fun EventSection(events: List<CalendarEvent>, add: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Events", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("Title, date, time and location", style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
+            }
+            FilledTonalButton(onClick = add) { Icon(Icons.Default.Add, null); Text("Event") }
+        }
+        Spacer(Modifier.height(7.dp))
+        if (events.isEmpty()) EmptyState("No events", "Add meetings, appointments or plans.")
+        else LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+            items(events, key = { it.id.value }) { event ->
+                Card(shape = RoundedCornerShape(18.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Event, null, tint = NexaColors.Primary)
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(event.title, fontWeight = FontWeight.SemiBold)
+                            Text(event.startsAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE, MMM d • h:mm a")), style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
+                            event.location?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable private fun EmptyState(title:String,body:String){Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(20.dp),colors=CardDefaults.cardColors(containerColor=NexaColors.EventBlueBg)){Column(Modifier.padding(18.dp)){Text(title,fontWeight=FontWeight.Bold);Text(body,style=MaterialTheme.typography.bodySmall,color=NexaColors.OnSurfaceMuted)}}}
