@@ -93,7 +93,7 @@ private fun HelpSupportDialog(onDismiss: () -> Unit, onWhatsApp: () -> Unit) {
         },
         confirmButton = {
             Button(onClick = onWhatsApp) {
-                Icon(Icons.Default.WhatsApp, null)
+                Icon(Icons.Default.Chat, null)
                 Spacer(Modifier.width(6.dp))
                 Text("Chat on WhatsApp")
             }
