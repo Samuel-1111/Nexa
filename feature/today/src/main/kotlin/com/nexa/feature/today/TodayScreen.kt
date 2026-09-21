@@ -24,6 +24,7 @@ fun TodayRoute(
 ) {
     val state by viewModel.uiState.collectAsState()
     val displayName by viewModel.displayName.collectAsState()
+    val assistantName by viewModel.assistantName.collectAsState()
     Scaffold { padding ->
         when (state) {
             TodayUiState.Loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -35,7 +36,7 @@ fun TodayRoute(
                 ) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("NEXA", style = MaterialTheme.typography.titleLarge, color = NexaColors.Primary, fontWeight = FontWeight.ExtraBold)
+                            Text(assistantName, style = MaterialTheme.typography.titleLarge, color = NexaColors.Primary, fontWeight = FontWeight.ExtraBold)
                             Text("Your Personal Assistant", style = MaterialTheme.typography.labelSmall, color = NexaColors.PrimaryDark)
                         }
                         Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface) {
