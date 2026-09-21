@@ -186,6 +186,7 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                     title = row.string("title"),
                     body = row.string("body").orEmpty(),
                     source = row.string("source") ?: "TEXT",
+                    reference = row.string("reference"),
                     createdAtEpochMs = row.instant("created_at") ?: now,
                     updatedAtEpochMs = row.instant("updated_at") ?: now,
                     deletedAtEpochMs = row.instant("deleted_at"),
@@ -219,6 +220,32 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
             )
         }
     }
+
+        val remoteEvents = supabase.postgrest.from("calendar_events").select { filter { eq("owner_id", userId) } }.decodeList<JsonObject>()
+        for (row in remoteEvents) {
+            val id = row.string("id") ?: continue
+            val start = row.instant("starts_at") ?: continue
+            val end = row.instant("ends_at") ?: continue
+            val local = database.calendarEventDao().get(id)
+            if (!shouldApplyRemote(local?.syncState)) continue
+            database.calendarEventDao().upsert(
+                CalendarEventEntity(
+                    id = id,
+                    ownerId = userId,
+                    title = row.string("title").orEmpty(),
+                    description = row.string("description"),
+                    location = row.string("location"),
+                    startsAtEpochMs = start,
+                    endsAtEpochMs = end,
+                    timezoneId = row.string("timezone") ?: "UTC",
+                    createdAtEpochMs = row.instant("created_at") ?: now,
+                    updatedAtEpochMs = row.instant("updated_at") ?: now,
+                    deletedAtEpochMs = row.instant("deleted_at"),
+                    serverVersion = row.long("server_version") ?: 1L,
+                    syncState = "SYNCED",
+                ),
+            )
+        }
 
     // Remote pulls may only replace records that are already synchronized.
     // Pending/conflicted/error local changes stay local until their outbox
@@ -295,12 +322,35 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                             put("title", entity.title)
                             put("body", entity.body)
                             put("source", entity.source)
+                            entity.reference?.let { put("reference", it) }
                             put("server_version", maxOf(1L, entity.serverVersion))
                             put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
                             put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
                             entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
                         })
                         database.noteDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
+                    }
+                    "EVENT" -> {
+                        val entity = database.calendarEventDao().get(operation.entityId)
+                        if (entity == null) {
+                            database.outboxDao().markDone(operation.id, System.currentTimeMillis())
+                            continue
+                        }
+                        supabase.postgrest.from("calendar_events").upsert(kotlinx.serialization.json.buildJsonObject {
+                            put("id", entity.id)
+                            put("owner_id", userId)
+                            put("title", entity.title)
+                            put("description", entity.description)
+                            put("location", entity.location)
+                            put("starts_at", java.time.Instant.ofEpochMilli(entity.startsAtEpochMs).toString())
+                            put("ends_at", java.time.Instant.ofEpochMilli(entity.endsAtEpochMs).toString())
+                            put("timezone", entity.timezoneId)
+                            put("server_version", maxOf(1L, entity.serverVersion))
+                            put("created_at", java.time.Instant.ofEpochMilli(entity.createdAtEpochMs).toString())
+                            put("updated_at", java.time.Instant.ofEpochMilli(entity.updatedAtEpochMs).toString())
+                            entity.deletedAtEpochMs?.let { put("deleted_at", java.time.Instant.ofEpochMilli(it).toString()) }
+                        })
+                        database.calendarEventDao().upsert(entity.copy(ownerId = userId, serverVersion = maxOf(1L, entity.serverVersion), syncState = "SYNCED"))
                     }
                     "MEMORY" -> {
                         val entity = database.memoryDao().get(operation.entityId)
