@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 
@@ -15,7 +17,17 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
             ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
         val manager = context.getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, "NEXA reminders", NotificationManager.IMPORTANCE_HIGH))
+        if (manager.getNotificationChannel(CHANNEL_ID) == null) {
+            val channel = NotificationChannel(CHANNEL_ID, "NEXA reminders", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Sound alerts for reminders you schedule in NEXA."
+                enableVibration(true)
+                setSound(
+                    Settings.System.DEFAULT_NOTIFICATION_URI,
+                    AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build(),
+                )
+            }
+            manager.createNotificationChannel(channel)
+        }
         val title = intent.getStringExtra(EXTRA_REMINDER_TITLE).orEmpty().ifBlank { "NEXA reminder" }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -28,7 +40,7 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        const val CHANNEL_ID = "nexa_reminders"
+        const val CHANNEL_ID = "nexa_reminders_v2"
         const val EXTRA_REMINDER_ID = "reminder_id"
         const val EXTRA_REMINDER_TITLE = "reminder_title"
     }
