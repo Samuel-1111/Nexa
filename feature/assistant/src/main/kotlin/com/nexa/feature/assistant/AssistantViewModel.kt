@@ -8,6 +8,8 @@ import android.util.Base64
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexa.core.network.AiGatewayClient
+import com.nexa.core.network.AiChatSummary
+import com.nexa.core.network.AiMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +22,10 @@ class AssistantViewModel @Inject constructor(
     private val aiGateway: AiGatewayClient,
 ) : ViewModel() {
     private val _reply = MutableStateFlow<String?>(null)
+    private val _messages = MutableStateFlow<List<AiMessage>>(emptyList())
+    val messages: StateFlow<List<AiMessage>> = _messages.asStateFlow()
+    private val _chats = MutableStateFlow<List<AiChatSummary>>(emptyList())
+    val chats: StateFlow<List<AiChatSummary>> = _chats.asStateFlow()
     val reply: StateFlow<String?> = _reply.asStateFlow()
     private val _transcript = MutableStateFlow<String?>(null)
     val transcript: StateFlow<String?> = _transcript.asStateFlow()
@@ -28,6 +34,8 @@ class AssistantViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
     private var chatId: String? = null
+
+    init { viewModelScope.launch { _chats.value = aiGateway.listChats(); _chats.value.firstOrNull()?.let { selectChat(it.id) } } }
 
     fun ask(message: String) {
         val clean = message.trim()
@@ -42,6 +50,7 @@ class AssistantViewModel @Inject constructor(
                 else {
                     _reply.value = result.reply.ifBlank { "I’m here. Tell me what you need." }
                     _transcript.value = null
+                    _messages.value = _messages.value + AiMessage("local-user-" + System.currentTimeMillis(), "user", clean) + AiMessage("local-assistant-" + System.currentTimeMillis(), "assistant", result.reply.ifBlank { "I’m here. Tell me what you need." })
                     result.audio_base64?.let { encoded -> viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { playPcm(encoded) } }
                 }
             } catch (e: Exception) {
@@ -93,8 +102,17 @@ class AssistantViewModel @Inject constructor(
     fun newChat() {
         chatId = null
         _reply.value = null
+        _messages.value = emptyList()
         _transcript.value = null
         _error.value = null
+    }
+
+    fun selectChat(id: String) {
+        chatId = id
+        viewModelScope.launch {
+            _messages.value = aiGateway.loadMessages(id)
+            _reply.value = _messages.value.lastOrNull { it.role == "assistant" }?.content
+        }
     }
 
     fun clearTranscript() { _transcript.value = null }
