@@ -2,10 +2,12 @@ package com.nexa.app.di
 
 import com.nexa.core.database.NexaDatabase
 import com.nexa.core.notifications.ReminderScheduler
+import com.nexa.data.LocalCalendarEventRepository
 import com.nexa.data.LocalMemoryRepository
 import com.nexa.data.LocalNoteRepository
 import com.nexa.data.LocalReminderRepository
 import com.nexa.data.LocalTaskRepository
+import com.nexa.domain.CalendarEventRepository
 import com.nexa.domain.CommandInterpreter
 import com.nexa.domain.DeterministicCommandInterpreter
 import com.nexa.domain.MemoryRepository
@@ -32,6 +34,9 @@ object RepositoryModule {
 
     @Provides @Singleton
     fun provideMemoryRepository(db: NexaDatabase): MemoryRepository = LocalMemoryRepository(db)
+
+    @Provides @Singleton
+    fun provideCalendarEventRepository(db: NexaDatabase): CalendarEventRepository = LocalCalendarEventRepository(db)
 
     @Provides @Singleton
     fun provideCommandInterpreter(): CommandInterpreter = DeterministicCommandInterpreter()
