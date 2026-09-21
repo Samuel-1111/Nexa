@@ -86,3 +86,5 @@ Not yet independently proven:
 - receipt of a real OTP email;
 - successful real Gemini request using the project's secret;
 - a real Remita payment, because merchant credentials/integration details are required.
+
+CI verification checkpoint.
