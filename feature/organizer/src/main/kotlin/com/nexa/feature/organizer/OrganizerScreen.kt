@@ -92,8 +92,9 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
         Text("Organizer", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text("Tasks • Reminders • Notes • Events", style = MaterialTheme.typography.bodySmall, color = NexaColors.OnSurfaceMuted)
         Spacer(Modifier.height(7.dp))
-        ScrollableTabRow(selectedTabIndex = section.ordinal, edgePadding = 0.dp) {
-            OrganizerSection.entries.forEach { item ->
+        val visibleSections = listOf(OrganizerSection.TASKS, OrganizerSection.REMINDERS, OrganizerSection.EVENTS)
+        ScrollableTabRow(selectedTabIndex = visibleSections.indexOf(if (section == OrganizerSection.NOTES) OrganizerSection.EVENTS else section).coerceAtLeast(0), edgePadding = 0.dp) {
+            visibleSections.forEach { item ->
                 Tab(selected = section == item, onClick = { section = item; showOverview = false }, text = { Text(item.name.lowercase().replaceFirstChar { it.uppercase() }) }, icon = { Icon(when(item){ OrganizerSection.TASKS->Icons.Default.CheckCircle; OrganizerSection.REMINDERS->Icons.Default.Alarm; OrganizerSection.NOTES->Icons.Default.Note; OrganizerSection.EVENTS->Icons.Default.CalendarMonth }, null, Modifier.size(18.dp)) })
             }
         }
@@ -103,7 +104,7 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
             OrganizerSection.TASKS -> TaskSection(state.tasks, { taskDialog = true }, viewModel::toggle)
             OrganizerSection.REMINDERS -> ReminderSection(state.reminders, { prepareReminderCreation() })
             OrganizerSection.NOTES -> NoteSection(state.notes, { noteDialog = true })
-            OrganizerSection.EVENTS -> EventSection(state.events, { eventDialog = true })
+            OrganizerSection.EVENTS -> EventSection(state.events, { eventDialog = true }, { section = OrganizerSection.NOTES })
         }
     }
     if(taskDialog) TaskDialog({taskDialog=false}) { t,p,d -> viewModel.addTask(t,p,d); taskDialog=false }
@@ -235,14 +236,17 @@ private fun NoteSection(notes: List<Note>, add: () -> Unit) {
 }
 
 @Composable
-private fun EventSection(events: List<CalendarEvent>, add: () -> Unit) {
+private fun EventSection(events: List<CalendarEvent>, add: () -> Unit, openNotes: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Events", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text("Title, date, time and location", style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
             }
-            FilledTonalButton(onClick = add) { Icon(Icons.Default.Add, null); Text("Event") }
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(onClick = openNotes) { Text("Notes") }
+                FilledTonalButton(onClick = add) { Icon(Icons.Default.Add, null); Text("Event") }
+            }
         }
         Spacer(Modifier.height(7.dp))
         if (events.isEmpty()) EmptyState("No events", "Add meetings, appointments or plans.")
