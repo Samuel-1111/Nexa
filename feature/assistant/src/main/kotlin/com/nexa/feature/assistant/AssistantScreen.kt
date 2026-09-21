@@ -43,7 +43,38 @@ fun AssistantScreen(viewModel: AssistantViewModel = hiltViewModel(), voiceContro
         transcript?.let{Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer)){Column(Modifier.padding(10.dp)){Text("Review voice text",fontWeight=FontWeight.Bold);Text(it,maxLines=3);Text("Edit below if needed, then send.",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
         Row(Modifier.fillMaxWidth().padding(top=6.dp),verticalAlignment=Alignment.Bottom){OutlinedTextField(text,{text=it},modifier=Modifier.weight(1f),placeholder={Text("Message NEXA…")},shape=RoundedCornerShape(22.dp),maxLines=5,enabled=!busy&&!listening);Spacer(Modifier.width(6.dp));FilledTonalIconButton(onClick={if(listening)voiceController.stop() else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)},enabled=!busy){Icon(if(listening)Icons.Default.Stop else Icons.Default.Mic,null)}}
         Spacer(Modifier.height(5.dp));Button(onClick={viewModel.ask(text);text=""},enabled=text.isNotBlank()&&!busy&&!listening,modifier=Modifier.fillMaxWidth().height(50.dp),shape=RoundedCornerShape(18.dp)){if(busy)CircularProgressIndicator(strokeWidth=2.dp)else Text("Send",fontWeight=FontWeight.Bold)}}
-    if(showHistory)AlertDialog(onDismissRequest={showHistory=false},title={Text("Chat history")},text={if(chats.isEmpty())Text("No saved chats yet.")else LazyColumn{items(chats,key={it.id}){chat->ListItem(headlineContent={Text(chat.title)},supportingContent={Text(chat.updated_at)},modifier=Modifier.fillMaxWidth(),leadingContent={Icon(Icons.Default.Chat,null)},trailingContent={Icon(Icons.Default.ChevronRight,null)},tonalElevation=0.dp,headlineContent={Text(chat.title)},overlineContent=null,modifier=Modifier.fillMaxWidth().then(Modifier),supportingContent={Text(chat.updated_at)},onClick={viewModel.selectChat(chat.id);showHistory=false})}}},confirmButton={TextButton({showHistory=false}){Text("Close")}})
+    if(showHistory) {
+        AlertDialog(
+            onDismissRequest = { showHistory = false },
+            title = { Text("Chat history") },
+            text = {
+                if(chats.isEmpty()) {
+                    Text("No saved chats yet.")
+                } else {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(chats, key = { it.id }) { chat ->
+                            Card(
+                                onClick = { viewModel.selectChat(chat.id); showHistory = false },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp),
+                            ) {
+                                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Chat, null, tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.width(10.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(chat.title, fontWeight = FontWeight.SemiBold)
+                                        Text(chat.updated_at, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    Icon(Icons.Default.ChevronRight, null)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showHistory = false }) { Text("Close") } },
+        )
+    }
 }
 
 @Composable private fun MessageBubble(message:AiMessage){val user=message.role=="user";Row(Modifier.fillMaxWidth(),horizontalArrangement=if(user)Arrangement.End else Arrangement.Start){Surface(shape=RoundedCornerShape(18.dp),color=if(user)MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,modifier=Modifier.widthIn(max=320.dp)){Column(Modifier.padding(12.dp)){if(!user)Text("NEXA",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold);Text(message.content)}}}}
