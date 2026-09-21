@@ -1,7 +1,15 @@
 package com.nexa.feature.organizer
 
+import android.Manifest
+import android.app.AlarmManager
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -58,6 +66,28 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
     var reminderDialog by rememberSaveable { mutableStateOf(false) }
     var noteDialog by rememberSaveable { mutableStateOf(false) }
     var eventDialog by rememberSaveable { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { }
+
+    fun prepareReminderCreation() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = context.getSystemService(AlarmManager::class.java)
+            if (!alarmManager.canScheduleExactAlarms()) {
+                context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = android.net.Uri.parse("package:${context.packageName}")
+                })
+            }
+        }
+        reminderDialog = true
+    }
+
     Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 10.dp)) {
         Text("Organizer", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text("Tasks • Reminders • Notes • Events", style = MaterialTheme.typography.bodySmall, color = NexaColors.OnSurfaceMuted)
@@ -73,7 +103,7 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
         }
         when(section) {
             OrganizerSection.TASKS -> TaskSection(state.tasks, { taskDialog = true }, viewModel::toggle)
-            OrganizerSection.REMINDERS -> ReminderSection(state.reminders, { reminderDialog = true })
+            OrganizerSection.REMINDERS -> ReminderSection(state.reminders, { prepareReminderCreation() })
             OrganizerSection.NOTES -> NoteSection(state.notes, { noteDialog = true })
             OrganizerSection.EVENTS -> EventSection(state.events, { eventDialog = true })
         }
