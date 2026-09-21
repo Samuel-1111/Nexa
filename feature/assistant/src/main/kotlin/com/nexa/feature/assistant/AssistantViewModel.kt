@@ -11,6 +11,18 @@ import com.nexa.core.network.AiGatewayClient
 import com.nexa.core.network.AiChatSummary
 import com.nexa.core.network.AiMessage
 import com.nexa.core.network.AuthRepository
+import com.nexa.core.model.NoteSource
+import com.nexa.core.model.Priority
+import com.nexa.domain.CalendarEventRepository
+import com.nexa.domain.NoteRepository
+import com.nexa.domain.ReminderRepository
+import com.nexa.domain.TaskRepository
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlinx.coroutines.flow.first
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +34,10 @@ import javax.inject.Inject
 class AssistantViewModel @Inject constructor(
     private val aiGateway: AiGatewayClient,
     private val authRepository: AuthRepository,
+    private val taskRepository: TaskRepository,
+    private val reminderRepository: ReminderRepository,
+    private val noteRepository: NoteRepository,
+    private val eventRepository: CalendarEventRepository,
 ) : ViewModel() {
     private val _assistantName = MutableStateFlow("NEXA")
     val assistantName: StateFlow<String> = _assistantName.asStateFlow()
@@ -48,15 +64,26 @@ class AssistantViewModel @Inject constructor(
             _busy.value = true
             _error.value = null
             try {
-                val result = aiGateway.sendMessage(clean, chatId, speak = true)
-                chatId = result.chat_id ?: chatId
-                if (!result.error.isNullOrBlank()) _error.value = friendlyError(result.error)
-                else {
-                    _reply.value = result.reply.ifBlank { "I’m here. Tell me what you need." }
-                    _transcript.value = null
-                    _messages.value = _messages.value + AiMessage("local-user-" + System.nanoTime(), "user", clean) + AiMessage("local-assistant-" + System.nanoTime(), "assistant", result.reply.ifBlank { "I’m here. Tell me what you need." })
-                    _chats.value = aiGateway.listChats()
-                    result.audio_base64?.let { encoded -> viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { playPcm(encoded) } }
+                val localReply = tryLocalAction(clean)
+                if (localReply != null) {
+                    appendLocalConversation(clean, localReply)
+                } else {
+                    val result = aiGateway.sendMessage(clean, chatId, speak = true)
+                    chatId = result.chat_id ?: chatId
+                    if (!result.error.isNullOrBlank()) {
+                        _error.value = friendlyError(result.error)
+                    } else {
+                        val reply = result.reply.ifBlank { "I’m here. Tell me what you need." }
+                        _reply.value = reply
+                        _transcript.value = null
+                        _messages.value = _messages.value +
+                            AiMessage("local-user-" + System.nanoTime(), "user", clean) +
+                            AiMessage("local-assistant-" + System.nanoTime(), "assistant", reply)
+                        _chats.value = aiGateway.listChats()
+                        result.audio_base64?.let { encoded ->
+                            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { playPcm(encoded) }
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 _error.value = friendlyError(e.message)
@@ -64,6 +91,72 @@ class AssistantViewModel @Inject constructor(
                 _busy.value = false
             }
         }
+    }
+
+
+    private suspend fun tryLocalAction(input: String): String? {
+        val value = input.trim()
+        val normalized = value.lowercase(Locale.ROOT)
+        if (normalized == "what time is it" || normalized == "what is the time" || normalized == "time") {
+            return "It’s " + LocalTime.now().format(DateTimeFormatter.ofPattern("h:mm a")) + "."
+        }
+        if (normalized == "what is today's date" || normalized == "what's today's date" || normalized == "date") {
+            return "Today is " + java.time.LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")) + "."
+        }
+        if (normalized.contains("what are my tasks") || normalized.contains("show my tasks") || normalized == "my tasks") {
+            val tasks = taskRepository.observeAllTasks().first()
+            return if (tasks.isEmpty()) "You don’t have any tasks yet." else
+                tasks.take(8).joinToString("\n") { task ->
+                    "• " + task.title + if (task.status.name == "COMPLETED") " — completed" else ""
+                }
+        }
+        if (normalized.startsWith("add task ") || normalized.startsWith("create task ")) {
+            val title = value.substringAfter("task ", "").trim()
+            if (title.isBlank()) return "Tell me what task you want to add."
+            taskRepository.create(title, Priority.NONE, null)
+            return "Done — I added "" + title + "" to your tasks."
+        }
+        if (normalized.startsWith("take a note ") || normalized.startsWith("add note ") || normalized.startsWith("note ")) {
+            val body = when {
+                normalized.startsWith("take a note ") -> value.substring(12).trim()
+                normalized.startsWith("add note ") -> value.substring(9).trim()
+                else -> value.substring(5).trim()
+            }
+            if (body.isBlank()) return "Tell me what you want me to write in the note."
+            noteRepository.create(null, body, NoteSource.TEXT, null)
+            return "Done — I saved that as a note."
+        }
+        if (normalized.startsWith("remind me to ") || normalized.startsWith("set a reminder ")) {
+            val prefix = if (normalized.startsWith("remind me to ")) "remind me to " else "set a reminder "
+            val raw = value.substring(prefix.length).trim()
+            val atMatch = Regex("(.+?)\\s+at\\s+(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?$", RegexOption.IGNORE_CASE).matchEntire(raw)
+            if (atMatch == null) return "I can set that reminder, but include a time like "at 6:30 pm"."
+            val title = atMatch.groupValues[1].trim()
+            var hour = atMatch.groupValues[2].toInt()
+            val minute = atMatch.groupValues[3].ifBlank { "0" }.toInt()
+            val meridiem = atMatch.groupValues[4]
+            if (meridiem.isNotBlank()) {
+                if (meridiem.equals("pm", true) && hour < 12) hour += 12
+                if (meridiem.equals("am", true) && hour == 12) hour = 0
+            }
+            val now = LocalDateTime.now()
+            var target = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
+            if (!target.isAfter(now)) target = target.plusDays(1)
+            reminderRepository.create(title, target.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault().id, null)
+            return "Done — I set "" + title + "" for " + target.format(DateTimeFormatter.ofPattern("EEE, MMM d • h:mm a")) + "."
+        }
+        if (normalized == "help" || normalized == "what can you do") {
+            return "I can manage your tasks, reminders, notes and events without AI. For general questions and conversation, I can use the AI assistant when it’s available."
+        }
+        return null
+    }
+
+    private fun appendLocalConversation(userText: String, reply: String) {
+        _reply.value = reply
+        _transcript.value = null
+        _messages.value = _messages.value +
+            AiMessage("local-user-" + System.nanoTime(), "user", userText) +
+            AiMessage("local-assistant-" + System.nanoTime(), "assistant", reply)
     }
 
     fun transcribe(audioBase64: String, mimeType: String) {
