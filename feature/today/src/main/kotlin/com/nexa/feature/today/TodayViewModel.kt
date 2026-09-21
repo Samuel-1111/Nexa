@@ -50,7 +50,7 @@ class TodayViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<TodayUiState> = combine(
-        taskRepository.observeOpenTasks(),
+        taskRepository.observeAllTasks(),
         reminderRepository.observeUpcoming(),
         noteRepository.observeRecent(),
         eventRepository.observeUpcoming(),
@@ -64,7 +64,9 @@ class TodayViewModel @Inject constructor(
         viewModelScope.launch { taskRepository.create(title = title, priority = Priority.NONE) }
     }
 
-    fun completeTask(task: Task) {
-        viewModelScope.launch { taskRepository.complete(task.id) }
+    fun toggleTask(task: Task) {
+        viewModelScope.launch { taskRepository.toggleComplete(task.id) }
     }
+
+    fun completeTask(task: Task) = toggleTask(task)
 }
