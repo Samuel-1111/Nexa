@@ -93,7 +93,7 @@ class LocalReminderRepository(
             database.reminderDao().softDelete(id.value, now)
             database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "REMINDER", id.value, "UPSERT", existing.serverVersion, "{\"id\":\"" + id.value + "\"}", "PENDING", 0, null, null, now, now))
         }
-        scheduler.cancel(Reminder(EntityId(id.value), title = existing.title, body = existing.body, triggerAt = Instant.ofEpochMilli(existing.triggerAtEpochMs), timezoneId = existing.timezoneId, scheduleState = ReminderScheduleState.CANCELED, deliveryPrecision = ReminderPrecision.valueOf(existing.deliveryPrecision)))
+        scheduler.cancel(Reminder(EntityId(id.value), title = existing.title, body = existing.body, triggerAt = Instant.ofEpochMilli(existing.triggerAtEpochMs), timezoneId = existing.timezoneId, scheduleState = ReminderScheduleState.CANCELED, precision = ReminderPrecision.valueOf(existing.deliveryPrecision)))
     }
 }
 
