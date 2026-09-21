@@ -99,7 +99,7 @@ fun NexaApp() {
         is SessionStatus.NotAuthenticated -> AuthScreen(
             initialCreateAccount = authMode == "create",
             viewModel = authViewModel,
-            onMagicLinkSent = { /* wait for the confirmation link to open NEXA */ },
+            onSignedIn = { /* sessionStatus drives navigation */ },
             onBack = {
                 authMode = null
                 prefs.edit().remove("landing_seen").apply()
