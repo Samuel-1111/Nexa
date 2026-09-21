@@ -66,7 +66,6 @@ fun SettingsScreen(onOpenMemoryCenter:()->Unit={}, onSignOut:()->Unit={}, onSubs
     if(dialog=="help") InfoDialog("Help & Support","For account or payment problems, contact the NEXA support channel you use for this project. NEXA will never claim an action succeeded unless its service confirms it."){dialog=null}
     if(dialog=="about") InfoDialog("About NEXA","NEXA — Your Personal Assistant. Built for fast, private and permission-based assistance."){dialog=null}
     if(showPlans) PlanDialog(onDismiss={showPlans=false},onStart={plan->viewModel.startPlan(plan){rrr->showPlans=false;context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://login.remita.net/remita/ecomm/finalize.reg?rrr="+rrr)))}})
-    message?.let { LaunchedEffect(it){ } }
 }
 
 @Composable private fun SettingItem(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,subtitle:String,onClick:()->Unit){Card(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp)){Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically){Surface(shape=RoundedCornerShape(12.dp),color=NexaColors.EventBlueBg){Icon(icon,null,Modifier.padding(9.dp),tint=NexaColors.Primary)};Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(title,fontWeight=FontWeight.SemiBold);Text(subtitle,style=MaterialTheme.typography.bodySmall,color=NexaColors.OnSurfaceMuted)};Icon(Icons.Default.ChevronRight,null,tint=NexaColors.OnSurfaceMuted)}}}
