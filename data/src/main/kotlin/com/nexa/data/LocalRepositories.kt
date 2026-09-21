@@ -219,6 +219,33 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
                 ),
             )
         }
+        val remoteEvents = supabase.postgrest.from("calendar_events").select { filter { eq("owner_id", userId) } }.decodeList<JsonObject>()
+        for (row in remoteEvents) {
+            val id = row.string("id") ?: continue
+            val start = row.instant("starts_at") ?: continue
+            val end = row.instant("ends_at") ?: continue
+            val local = database.calendarEventDao().get(id)
+            if (!shouldApplyRemote(local?.syncState)) continue
+            database.calendarEventDao().upsert(
+                CalendarEventEntity(
+                    id = id,
+                    ownerId = userId,
+                    title = row.string("title").orEmpty(),
+                    description = row.string("description"),
+                    location = row.string("location"),
+                    startsAtEpochMs = start,
+                    endsAtEpochMs = end,
+                    timezoneId = row.string("timezone") ?: "UTC",
+                    createdAtEpochMs = row.instant("created_at") ?: now,
+                    updatedAtEpochMs = row.instant("updated_at") ?: now,
+                    deletedAtEpochMs = row.instant("deleted_at"),
+                    serverVersion = row.long("server_version") ?: 1L,
+                    syncState = "SYNCED",
+                ),
+            )
+        }
+
+
     }
 
 
