@@ -18,6 +18,8 @@ interface TaskDao {
     suspend fun upsert(entity: TaskEntity)
     @Query("UPDATE tasks SET status = :status, completedAtEpochMs = :completedAt, updatedAtEpochMs = :updatedAt, syncState = 'PENDING' WHERE id = :id")
     suspend fun setCompletion(id: String, status: String, completedAt: Long?, updatedAt: Long)
+    @Query("UPDATE tasks SET deletedAtEpochMs = :now, updatedAtEpochMs = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun softDelete(id: String, now: Long)
 }
 
 @Dao
@@ -30,6 +32,8 @@ interface ReminderDao {
     suspend fun get(id: String): ReminderEntity?
     @Query("SELECT * FROM reminders WHERE deletedAtEpochMs IS NULL AND scheduleState IN ('UNSCHEDULED', 'SCHEDULED') AND triggerAtEpochMs > :now ORDER BY triggerAtEpochMs ASC")
     suspend fun getFuture(now: Long): List<ReminderEntity>
+    @Query("UPDATE reminders SET deletedAtEpochMs = :now, scheduleState = 'CANCELED', updatedAtEpochMs = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun softDelete(id: String, now: Long)
 }
 
 @Dao
@@ -40,6 +44,8 @@ interface NoteDao {
     suspend fun upsert(entity: NoteEntity)
     @Query("SELECT * FROM notes WHERE id = :id LIMIT 1")
     suspend fun get(id: String): NoteEntity?
+    @Query("UPDATE notes SET deletedAtEpochMs = :now, updatedAtEpochMs = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun softDelete(id: String, now: Long)
 }
 
 @Dao
@@ -84,4 +90,6 @@ interface CalendarEventDao {
     suspend fun upsert(entity: CalendarEventEntity)
     @Query("SELECT * FROM calendar_events WHERE id = :id LIMIT 1")
     suspend fun get(id: String): CalendarEventEntity?
+    @Query("UPDATE calendar_events SET deletedAtEpochMs = :now, updatedAtEpochMs = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun softDelete(id: String, now: Long)
 }
