@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nexa.core.model.Priority
 import com.nexa.core.model.Reminder
 import com.nexa.core.model.Task
+import com.nexa.domain.CalendarEventRepository
 import com.nexa.core.network.AuthRepository
 import com.nexa.domain.NoteRepository
 import com.nexa.domain.ReminderRepository
@@ -19,7 +20,7 @@ import javax.inject.Inject
 
 sealed interface TodayUiState {
     data object Loading : TodayUiState
-    data class Loaded(val tasks: List<Task>, val reminders: List<Reminder>, val noteCount: Int) : TodayUiState
+    data class Loaded(val tasks: List<Task>, val reminders: List<Reminder>, val eventCount: Int, val noteCount: Int) : TodayUiState
 }
 
 @HiltViewModel
@@ -28,9 +29,16 @@ class TodayViewModel @Inject constructor(
     private val reminderRepository: ReminderRepository,
     private val authRepository: AuthRepository,
     private val noteRepository: NoteRepository,
+    private val eventRepository: CalendarEventRepository,
 ) : ViewModel() {
     private val _displayName = MutableStateFlow("there")
     val displayName: StateFlow<String> = _displayName
+
+    fun greeting(): String = when (java.time.LocalTime.now().hour) {
+        in 5..11 -> "Good morning,"
+        in 12..16 -> "Good afternoon,"
+        else -> "Good evening,"
+    }
 
     init {
         viewModelScope.launch {
@@ -44,8 +52,10 @@ class TodayViewModel @Inject constructor(
         taskRepository.observeOpenTasks(),
         reminderRepository.observeUpcoming(),
         noteRepository.observeRecent(),
-    ) { tasks, reminders, notes ->
-        TodayUiState.Loaded(tasks, reminders, notes.size)
+        eventRepository.observeUpcoming(),
+    ) { tasks, reminders, notes, events ->
+        val today = java.time.LocalDate.now()
+        TodayUiState.Loaded(tasks, reminders, events.count { it.startsAt.atZone(java.time.ZoneId.systemDefault()).toLocalDate() == today }, notes.size)
     }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), TodayUiState.Loading)
 
     fun addQuickTask(title: String) {
