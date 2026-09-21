@@ -140,7 +140,7 @@ fun TodayRoute(
                     ) {
                         data.tasks.take(2).forEach { task ->
                             Row(
-                                Modifier.fillMaxWidth().height(30.dp),
+                                Modifier.fillMaxWidth().height(34.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Checkbox(
@@ -149,13 +149,20 @@ fun TodayRoute(
                                     modifier = Modifier.size(30.dp),
                                 )
                                 Spacer(Modifier.width(5.dp))
-                                Text(
-                                    text = task.title,
+                                TextButton(
+                                    onClick = { onOpenOrganizer("TASKS") },
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp),
+                                ) {
+                                    Text(
+                                        text = task.title,
                                     modifier = Modifier.weight(1f),
                                     fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
+                                        style = MaterialTheme.typography.bodySmall,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+                                    )
+                                }
                                 if (task.status == TaskStatus.COMPLETED) {
                                     Text("Done", style = MaterialTheme.typography.labelSmall, color = NexaColors.Primary)
                                 }
@@ -169,8 +176,14 @@ fun TodayRoute(
                         empty = data.reminders.isEmpty(),
                     ) {
                         data.reminders.take(2).forEach { reminder ->
+                            Card(
+                                onClick = { onOpenOrganizer("REMINDERS") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = NexaColors.Background),
+                            ) {
                             Row(
-                                Modifier.fillMaxWidth().height(31.dp),
+                                Modifier.fillMaxWidth().height(34.dp).padding(horizontal = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Icon(Icons.Default.NotificationsNone, null, Modifier.size(18.dp), tint = NexaColors.ReminderOrange)
@@ -183,6 +196,7 @@ fun TodayRoute(
                                         color = NexaColors.OnSurfaceMuted,
                                     )
                                 }
+                            }
                             }
                         }
                     }
