@@ -42,6 +42,16 @@ data class Note(
     val title: String? = null,
     val body: String,
     val source: NoteSource,
+    val reference: String? = null,
+)
+
+data class CalendarEvent(
+    val id: EntityId,
+    val title: String,
+    val description: String? = null,
+    val location: String? = null,
+    val startsAt: Instant,
+    val endsAt: Instant,
 )
 
 data class Memory(
