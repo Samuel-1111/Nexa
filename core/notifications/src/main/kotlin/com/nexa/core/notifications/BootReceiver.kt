@@ -28,7 +28,7 @@ class BootReceiver : BroadcastReceiver() {
                             alarmIntent,
                             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
                         )
-                        alarms.setAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, row.triggerAtEpochMs, pi)
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && alarms.canScheduleExactAlarms()) {\n                            alarms.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, row.triggerAtEpochMs, pi)\n                        } else {\n                            alarms.setAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, row.triggerAtEpochMs, pi)\n                        }
                     }
                 }
             } finally {
