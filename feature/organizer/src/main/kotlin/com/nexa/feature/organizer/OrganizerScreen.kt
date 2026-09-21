@@ -38,7 +38,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-private enum class OrganizerSection { TASKS, REMINDERS, EVENTS }
+private enum class OrganizerSection { TASKS, REMINDERS, NOTES, EVENTS }
 data class OrganizerState(val tasks: List<Task> = emptyList(), val reminders: List<Reminder> = emptyList(), val notes: List<Note> = emptyList(), val events: List<CalendarEvent> = emptyList())
 
 @HiltViewModel
@@ -93,10 +93,22 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
         Text("Organizer", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text("Tasks • Reminders • Events", style = MaterialTheme.typography.bodySmall, color = NexaColors.OnSurfaceMuted)
         Spacer(Modifier.height(7.dp))
-        val visibleSections = listOf(OrganizerSection.TASKS, OrganizerSection.REMINDERS, OrganizerSection.EVENTS)
+        val visibleSections = listOf(OrganizerSection.TASKS, OrganizerSection.REMINDERS, OrganizerSection.NOTES, OrganizerSection.EVENTS)
         TabRow(selectedTabIndex = visibleSections.indexOf(section).coerceAtLeast(0)) {
             visibleSections.forEach { item ->
-                Tab(selected = section == item, onClick = { section = item; showOverview = false; showNotes = false }, text = { Text(item.name.lowercase().replaceFirstChar { it.uppercase() }) }, icon = { Icon(when(item){ OrganizerSection.TASKS->Icons.Default.CheckCircle; OrganizerSection.REMINDERS->Icons.Default.Alarm; OrganizerSection.EVENTS->Icons.Default.CalendarMonth }, null, Modifier.size(18.dp)) })
+                Tab(
+                    selected = section == item,
+                    onClick = { section = item; showOverview = false; showNotes = false },
+                    text = { Text(item.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                    icon = { Icon(
+                        when(item){
+                            OrganizerSection.TASKS -> Icons.Default.CheckCircle
+                            OrganizerSection.REMINDERS -> Icons.Default.Alarm
+                            OrganizerSection.NOTES -> Icons.Default.Note
+                            OrganizerSection.EVENTS -> Icons.Default.CalendarMonth
+                        }, null, Modifier.size(18.dp)
+                    ) }
+                )
             }
         }
         if (showOverview) {
@@ -106,7 +118,8 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
         } else when(section) {
             OrganizerSection.TASKS -> TaskSection(state.tasks, { taskDialog = true }, viewModel::toggle)
             OrganizerSection.REMINDERS -> ReminderSection(state.reminders, { prepareReminderCreation() })
-            OrganizerSection.EVENTS -> EventSection(state.events, { eventDialog = true }, { showNotes = true })
+            OrganizerSection.NOTES -> NoteSection(state.notes, { noteDialog = true })
+            OrganizerSection.EVENTS -> EventSection(state.events, { eventDialog = true })
         }
     }
     if(taskDialog) TaskDialog({taskDialog=false}) { t,p,d -> viewModel.addTask(t,p,d); taskDialog=false }
@@ -238,17 +251,14 @@ private fun NoteSection(notes: List<Note>, add: () -> Unit) {
 }
 
 @Composable
-private fun EventSection(events: List<CalendarEvent>, add: () -> Unit, openNotes: () -> Unit) {
+private fun EventSection(events: List<CalendarEvent>, add: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Events", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text("Title, date, time and location", style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = openNotes) { Text("Notes") }
-                FilledTonalButton(onClick = add) { Icon(Icons.Default.Add, null); Text("Event") }
-            }
+            FilledTonalButton(onClick = add) { Icon(Icons.Default.Add, null); Text("Event") }
         }
         Spacer(Modifier.height(7.dp))
         if (events.isEmpty()) EmptyState("No events", "Add meetings, appointments or plans.")
