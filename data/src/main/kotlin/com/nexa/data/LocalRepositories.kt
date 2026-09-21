@@ -56,7 +56,7 @@ class LocalTaskRepository(private val database: NexaDatabase) : TaskRepository {
         val completed = existing.status != "COMPLETED"
         database.withTransaction {
             database.taskDao().setCompletion(id.value, if (completed) "COMPLETED" else "OPEN", if (completed) now else null, now)
-            database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "TASK", id.value, "UPSERT", existing.serverVersion, "{"id":"" + id.value + ""}", "PENDING", 0, null, null, now, now))
+            database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "TASK", id.value, "UPSERT", existing.serverVersion, "{\"id\":\"" + id.value + "\"}", "PENDING", 0, null, null, now, now))
         }
     }
 }
@@ -83,7 +83,7 @@ class LocalReminderRepository(
 
 class LocalNoteRepository(private val database: NexaDatabase) : NoteRepository {
     override fun observeRecent(): Flow<List<Note>> = database.noteDao().observeRecent().map { rows ->
-        rows.map { Note(EntityId(it.id), it.title, it.body, NoteSource.valueOf(it.source)) }
+        rows.map { Note(EntityId(it.id), it.title, it.body, NoteSource.valueOf(it.source), it.reference) }
     }
     override suspend fun create(title: String?, body: String, source: NoteSource, reference: String?): Note {
         val id = EntityId.new()
@@ -221,31 +221,6 @@ class NexaSyncWorker @dagger.assisted.AssistedInject constructor(
         }
     }
 
-        val remoteEvents = supabase.postgrest.from("calendar_events").select { filter { eq("owner_id", userId) } }.decodeList<JsonObject>()
-        for (row in remoteEvents) {
-            val id = row.string("id") ?: continue
-            val start = row.instant("starts_at") ?: continue
-            val end = row.instant("ends_at") ?: continue
-            val local = database.calendarEventDao().get(id)
-            if (!shouldApplyRemote(local?.syncState)) continue
-            database.calendarEventDao().upsert(
-                CalendarEventEntity(
-                    id = id,
-                    ownerId = userId,
-                    title = row.string("title").orEmpty(),
-                    description = row.string("description"),
-                    location = row.string("location"),
-                    startsAtEpochMs = start,
-                    endsAtEpochMs = end,
-                    timezoneId = row.string("timezone") ?: "UTC",
-                    createdAtEpochMs = row.instant("created_at") ?: now,
-                    updatedAtEpochMs = row.instant("updated_at") ?: now,
-                    deletedAtEpochMs = row.instant("deleted_at"),
-                    serverVersion = row.long("server_version") ?: 1L,
-                    syncState = "SYNCED",
-                ),
-            )
-        }
 
     // Remote pulls may only replace records that are already synchronized.
     // Pending/conflicted/error local changes stay local until their outbox
