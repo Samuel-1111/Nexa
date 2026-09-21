@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -269,14 +270,34 @@ private fun SubscriptionRequiredScreen(authViewModel: AuthViewModel) {
 
 @Composable
 private fun PlanCard(title: String, price: String, detail: String, plan: String, authViewModel: AuthViewModel) {
-    var busy by remember { mutableStateOf(false) }\n    val context = LocalContext.current\n    Card(shape = RoundedCornerShape(20.dp)) {
+    var busy by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    Card(shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, Modifier.weight(1f))
                 Text(price, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
             Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Button(onClick = { busy = true; kotlinx.coroutines.MainScope().launch { try { val result = authViewModel.initiateSubscription(plan); result.rrr?.let { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://login.remita.net/remita/ecomm/finalize.reg?rrr=" + it))) } } finally { busy = false } } }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { if (busy) CircularProgressIndicator(strokeWidth = 2.dp) else Text("Continue with " + title) }
+            Button(
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        try {
+                            val result = authViewModel.initiateSubscription(plan)
+                            result.rrr?.let {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://login.remita.net/remita/ecomm/finalize.reg?rrr=" + it)))
+                            }
+                        } finally { busy = false }
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (busy) CircularProgressIndicator(strokeWidth = 2.dp)
+                else Text("Continue with " + title)
+            }
         }
     }
 }
