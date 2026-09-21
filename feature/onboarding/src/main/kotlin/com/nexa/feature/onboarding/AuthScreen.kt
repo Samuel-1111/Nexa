@@ -18,11 +18,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 fun AuthScreen(
     initialCreateAccount: Boolean = false,
     viewModel: AuthViewModel = hiltViewModel(),
-    onMagicLinkSent: (String) -> Unit = {},
+    onSignedIn: () -> Unit = {},
     onBack: () -> Unit = {},
 ) {
     var createAccount by rememberSaveable { mutableStateOf(initialCreateAccount) }
     var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
     val busy by viewModel.busy.collectAsState()
     val message by viewModel.message.collectAsState()
 
@@ -41,9 +42,9 @@ fun AuthScreen(
             Spacer(Modifier.height(8.dp))
             Text(
                 if (createAccount)
-                    "Enter your email and we’ll send you a secure confirmation link. Tap the link to continue."
+                    "Create your account with your Gmail and password. We’ll send a confirmation link to your email."
                 else
-                    "Enter your email and we’ll send you a secure sign-in link. No password or code to remember.",
+                    "Sign in with your Gmail and password.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -53,21 +54,30 @@ fun AuthScreen(
                 label = { Text("Email address") }, singleLine = true, shape = RoundedCornerShape(16.dp)
             )
             Spacer(Modifier.height(18.dp))
+            OutlinedTextField(
+                value = password, onValueChange = { password = it }, modifier = Modifier.fillMaxWidth(),
+                label = { Text("Password") }, singleLine = true, shape = RoundedCornerShape(16.dp),
+                visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
+            )
+            Spacer(Modifier.height(18.dp))
             Button(
-                onClick = { viewModel.sendMagicLink(email) { onMagicLinkSent(email.trim()) } },
-                enabled = !busy && email.trim().contains("@"),
+                onClick = {
+                    if (createAccount) viewModel.createAccount(email, password) {}
+                    else viewModel.signIn(email, password) { onSignedIn() }
+                },
+                enabled = !busy && email.trim().contains("@") && password.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(17.dp),
             ) {
                 if (busy) CircularProgressIndicator(strokeWidth = 2.dp)
-                else Text(if (createAccount) "Create account" else "Send sign-in link", fontWeight = FontWeight.SemiBold)
+                else Text(if (createAccount) "Create account" else "Sign in", fontWeight = FontWeight.SemiBold)
             }
             message?.let {
                 Spacer(Modifier.height(12.dp))
                 Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
-                    color = if (it.startsWith("Check your email")) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)) {
+                    color = if (it.startsWith("Check your email") || it.startsWith("Account created")) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)) {
                     Text(it, Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        color = if (it.startsWith("Check your email")) Color(0xFF2E7D32) else Color(0xFFC62828),
+                        color = if (it.startsWith("Check your email") || it.startsWith("Account created")) Color(0xFF2E7D32) else Color(0xFFC62828),
                         style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
                 }
             }
