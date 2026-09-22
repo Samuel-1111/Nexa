@@ -486,3 +486,5 @@ class LocalCalendarEventRepository(private val database: NexaDatabase) : Calenda
         return com.nexa.core.model.CalendarEvent(id, title, description, location, startsAt, endsAt)
     }
 }
+
+}
