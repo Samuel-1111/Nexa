@@ -52,10 +52,20 @@ jobs:
           test -n "${{ secrets.NEXA_SUPABASE_URL }}" || echo "Using checked-in public Supabase URL fallback."
           test -n "${{ secrets.NEXA_SUPABASE_ANON_KEY }}" || echo "Using checked-in public Supabase publishable-key fallback."
 
+      - name: Verify Gradle and Java
+        run: |
+          java -version
+          gradle --version
+
+      - name: Generate Gradle wrapper
+        run: |
+          gradle wrapper --gradle-version 8.9 --distribution-type bin
+          chmod +x gradlew
+
       - name: Build debug APK
         run: |
           set -o pipefail
-          gradle assembleDebug --stacktrace --info 2>&1 | tee build.log
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace --info 2>&1 | tee build.log
 
       - name: Upload build log
         if: always()
