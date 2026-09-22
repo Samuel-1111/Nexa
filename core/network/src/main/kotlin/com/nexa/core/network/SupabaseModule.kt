@@ -20,6 +20,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.JsonObject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -42,6 +43,19 @@ private data class ProfileNameRow(@SerialName("display_name") val displayName: S
 private data class AssistantNameRow(@SerialName("assistant_name") val value: String? = null)
 @Serializable
 private data class OnboardingRow(@SerialName("onboarding_completed") val value: Boolean = false)
+@Serializable
+data class AutomationRule(
+    val id: String,
+    val name: String,
+    val enabled: Boolean = true,
+    @SerialName("trigger_type") val triggerType: String,
+    @SerialName("trigger_config") val triggerConfig: JsonObject = JsonObject(emptyMap()),
+    @SerialName("action_type") val actionType: String,
+    @SerialName("action_config") val actionConfig: JsonObject = JsonObject(emptyMap()),
+    @SerialName("next_run_at") val nextRunAt: String? = null,
+    @SerialName("last_run_at") val lastRunAt: String? = null,
+)
+
 @Serializable
 private data class SubscriptionRow(val status: String? = null, @SerialName("trial_ends_at") val trialEndsAt: String? = null, @SerialName("current_period_end") val currentPeriodEnd: String? = null)
 
@@ -119,6 +133,56 @@ class AuthRepository(private val client: SupabaseClient, private val httpClient:
             setBody(buildJsonObject { put("plan", plan) })
         }
         return kotlinx.serialization.json.Json.decodeFromString<RemitaInitResult>(response.bodyAsText())
+    }
+
+    suspend fun listAutomations(): List<AutomationRule> {
+        val id = currentUserId ?: return emptyList()
+        return client.from("automation_rules").select {
+            filter { eq("owner_id", id) }
+            order("created_at", io.github.jan.supabase.postgrest.query.Order.ASCENDING)
+        }.decodeList<AutomationRule>()
+    }
+
+    suspend fun createAutomation(
+        name: String,
+        intervalSeconds: Long,
+        actionType: String,
+        actionTitle: String,
+        actionBody: String? = null,
+        actionPriority: String = "NONE",
+    ): Boolean {
+        val id = currentUserId ?: return false
+        val next = java.time.Instant.now().plusSeconds(intervalSeconds).toString()
+        client.from("automation_rules").insert(buildJsonObject {
+            put("owner_id", id)
+            put("name", name.trim())
+            put("enabled", true)
+            put("trigger_type", "RECURRING")
+            put("trigger_config", buildJsonObject { put("interval_seconds", intervalSeconds) })
+            put("action_type", actionType)
+            put("action_config", buildJsonObject {
+                put("title", actionTitle.trim())
+                actionBody?.let { put("body", it) }
+                put("priority", actionPriority)
+                put("timezone", java.time.ZoneId.systemDefault().id)
+            })
+            put("next_run_at", next)
+        })
+        return true
+    }
+
+    suspend fun setAutomationEnabled(id: String, enabled: Boolean) {
+        val owner = currentUserId ?: return
+        client.from("automation_rules").update({ set("enabled", enabled) }) {
+            filter { eq("id", id); eq("owner_id", owner) }
+        }
+    }
+
+    suspend fun deleteAutomation(id: String) {
+        val owner = currentUserId ?: return
+        client.from("automation_rules").delete {
+            filter { eq("id", id); eq("owner_id", owner) }
+        }
     }
 
     suspend fun signInWithPassword(email: String, password: String) {
