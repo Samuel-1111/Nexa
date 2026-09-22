@@ -1,4 +1,5 @@
 name: Build NEXA APK
+# Manual/tester build workflow
 
 on:
   workflow_dispatch:
