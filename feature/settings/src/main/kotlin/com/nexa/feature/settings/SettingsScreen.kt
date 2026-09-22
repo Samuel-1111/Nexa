@@ -45,7 +45,6 @@ class SettingsViewModel @Inject constructor(private val auth: AuthRepository) : 
 fun SettingsScreen(onOpenMemoryCenter:()->Unit={}, onSignOut:()->Unit={}, onSubscription:()->Unit={}, viewModel:SettingsViewModel=hiltViewModel()) {
     val name by viewModel.displayName.collectAsState(); val pa by viewModel.assistantName.collectAsState(); val message by viewModel.message.collectAsState()
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
-    var showPlans by rememberSaveable { mutableStateOf(false) }
     var editName by rememberSaveable(name) { mutableStateOf(name) }; var editPa by rememberSaveable(pa){mutableStateOf(pa)}
     val context=LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=16.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(9.dp)){
@@ -54,7 +53,7 @@ fun SettingsScreen(onOpenMemoryCenter:()->Unit={}, onSignOut:()->Unit={}, onSubs
         Card(shape=RoundedCornerShape(20.dp)){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Surface(shape=RoundedCornerShape(50),color=NexaColors.EventBlueBg){Icon(Icons.Default.Person,null,Modifier.padding(13.dp),tint=NexaColors.Primary)};Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(name,fontWeight=FontWeight.Bold);Text("PA: "+pa,style=MaterialTheme.typography.bodySmall,color=NexaColors.OnSurfaceMuted)};IconButton({dialog="profile"}){Icon(Icons.Default.Edit,null)}}}
         SettingItem(Icons.Default.Person,"Account & Profile","Change your name and PA name"){dialog="profile"}
         SettingItem(Icons.Default.Memory,"Memory","Review, approve, edit or reject saved memories"){onOpenMemoryCenter()}
-        SettingItem(Icons.Default.CreditCard,"Subscription","View Essential, Pro and Executive plans"){showPlans=true}
+        SettingItem(Icons.Default.CreditCard,"Subscription","View plans, features and pricing"){onSubscription()}
         SettingItem(Icons.Default.Apps,"Connected Apps","Review integrations and permissions"){dialog="apps"}
         SettingItem(Icons.Default.Notifications,"Notifications","Open Android notification settings"){context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,context.packageName))}
         SettingItem(Icons.Default.Lock,"Privacy & Permissions","Open NEXA app permissions"){context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+context.packageName)))}
@@ -72,14 +71,10 @@ fun SettingsScreen(onOpenMemoryCenter:()->Unit={}, onSignOut:()->Unit={}, onSubs
         }
     )
     if(dialog=="about") InfoDialog("About NEXA","NEXA — Your Personal Assistant. Built for fast, private and permission-based assistance."){dialog=null}
-    if(showPlans) PlanDialog(onDismiss={showPlans=false},onStart={plan->viewModel.startPlan(plan){rrr->showPlans=false;context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://login.remita.net/remita/ecomm/finalize.reg?rrr="+rrr)))}})
 }
 
 @Composable private fun SettingItem(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,subtitle:String,onClick:()->Unit){Card(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp)){Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically){Surface(shape=RoundedCornerShape(12.dp),color=NexaColors.EventBlueBg){Icon(icon,null,Modifier.padding(9.dp),tint=NexaColors.Primary)};Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(title,fontWeight=FontWeight.SemiBold);Text(subtitle,style=MaterialTheme.typography.bodySmall,color=NexaColors.OnSurfaceMuted)};Icon(Icons.Default.ChevronRight,null,tint=NexaColors.OnSurfaceMuted)}}}
 @Composable private fun InfoDialog(title:String,body:String,onDismiss:()->Unit){AlertDialog(onDismissRequest=onDismiss,title={Text(title)},text={Text(body)},confirmButton={Button(onClick=onDismiss){Text("Done")}})}
-@Composable private fun PlanDialog(onDismiss:()->Unit,onStart:(String)->Unit){AlertDialog(onDismissRequest=onDismiss,title={Text("NEXA Subscription")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){PlanRow("Essential","₦1,000 / month","150 AI • 75 voice",onStart);PlanRow("Pro","₦3,000 / month","750 AI • 300 voice",onStart);PlanRow("Executive","₦5,000 / month","Unlimited AI",onStart)}},confirmButton={TextButton(onClick=onDismiss){Text("Close")}})}
-@Composable private fun PlanRow(name:String,price:String,detail:String,onStart:(String)->Unit){Card(shape=RoundedCornerShape(16.dp)){Column(Modifier.padding(12.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text(name,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));Text(price,color=NexaColors.Primary,fontWeight=FontWeight.Bold)};Text(detail,style=MaterialTheme.typography.bodySmall,color=NexaColors.OnSurfaceMuted);Spacer(Modifier.height(5.dp));Button(onClick={onStart(name.uppercase())},modifier=Modifier.fillMaxWidth()){Text("Continue")}}}}
-
 @Composable
 private fun HelpSupportDialog(onDismiss: () -> Unit, onWhatsApp: () -> Unit) {
     AlertDialog(
@@ -100,4 +95,66 @@ private fun HelpSupportDialog(onDismiss: () -> Unit, onWhatsApp: () -> Unit) {
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
+}
+
+
+@Composable
+fun SubscriptionScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
+    val context = LocalContext.current
+    val message by viewModel.message.collectAsState()
+    val plans = listOf(
+        Triple("Essential", "₦1,000 / month", listOf("150 AI requests / month", "75 voice requests / month", "20 active automations", "250 memories")),
+        Triple("Pro", "₦3,000 / month", listOf("750 AI requests / month", "300 voice requests / month", "100 active automations", "1,000 memories")),
+        Triple("Executive", "₦5,000 / month", listOf("Unlimited AI requests", "Unlimited voice requests", "Unlimited automations", "Unlimited memories")),
+    )
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).systemBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") }
+            Column(Modifier.weight(1f)) {
+                Text("NEXA Subscription", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text("Choose the plan that fits how you use NEXA.", style = MaterialTheme.typography.bodySmall, color = NexaColors.OnSurfaceMuted)
+            }
+        }
+        Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = NexaColors.EventBlueBg)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("3-day free trial", fontWeight = FontWeight.Bold)
+                Text("Try NEXA before you pay. Your trial includes the core assistant, organizer and automation features.", style = MaterialTheme.typography.bodySmall)
+                Text("After the trial, choose a monthly plan to continue.", style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
+            }
+        }
+        plans.forEach { (name, price, features) ->
+            Card(shape = RoundedCornerShape(20.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text(price, color = NexaColors.Primary, fontWeight = FontWeight.Bold)
+                    }
+                    features.forEach { feature ->
+                        Row(verticalAlignment = Alignment.Top) {
+                            Icon(Icons.Default.CheckCircle, null, Modifier.size(18.dp), tint = NexaColors.Primary)
+                            Spacer(Modifier.width(7.dp))
+                            Text(feature, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    Button(
+                        onClick = {
+                            viewModel.startPlan(name.uppercase()) { rrr ->
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://login.remita.net/remita/ecomm/finalize.reg?rrr=" + rrr)))
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Continue with $name") }
+                }
+            }
+        }
+        message?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+    }
 }
