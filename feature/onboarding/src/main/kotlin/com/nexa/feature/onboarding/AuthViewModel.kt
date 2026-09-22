@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexa.core.network.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,13 +33,14 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
 
     suspend fun isOnboardingComplete(): Boolean = authRepository.isOnboardingComplete()
     suspend fun hasActiveSubscription(): Boolean = authRepository.subscriptionAccess()
-    suspend fun initiateSubscription(plan: String): AuthRepository.RemitaInitResult = authRepository.initiateSubscription(plan)
+    suspend fun initiateSubscription(plan: String): AuthRepository.RemitaInitResult =
+        authRepository.initiateSubscription(plan)
 
     fun signIn(email: String, password: String, onSignedIn: () -> Unit) = viewModelScope.launch {
         _busy.value = true; _message.value = null
         try {
-            val clean = email.trim()
-            require(clean.contains("@") && clean.contains(".")) { "Enter a valid Gmail address." }
+            val clean = email.trim().lowercase()
+            require(clean.endsWith("@gmail.com")) { "Enter a valid Gmail address." }
             require(password.length >= 6) { "Enter your password." }
             authRepository.signInWithPassword(clean, password)
             onSignedIn()
@@ -51,8 +51,8 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
     fun createAccount(email: String, password: String, confirmPassword: String, onCreated: () -> Unit) = viewModelScope.launch {
         _busy.value = true; _message.value = null
         try {
-            val clean = email.trim()
-            require(clean.contains("@") && clean.contains(".")) { "Enter a valid Gmail address." }
+            val clean = email.trim().lowercase()
+            require(clean.endsWith("@gmail.com")) { "Enter a valid Gmail address." }
             require(password == confirmPassword) { "Passwords do not match." }
             require(password.length >= 6) { "Password must be at least 6 characters." }
             authRepository.createAccount(clean, password)
@@ -70,10 +70,18 @@ class AuthViewModel @Inject constructor(private val authRepository: AuthReposito
     private fun friendlyError(error: Throwable): String {
         val raw = error.message.orEmpty().lowercase()
         return when {
-            raw.contains("rate limit") || raw.contains("too many") -> "Too many attempts. Please wait a moment and try again."
-            raw.contains("network") || raw.contains("timeout") || raw.contains("connection") -> "Check your internet connection and try again."
-            raw.contains("redirect") || raw.contains("not allowed") -> "The confirmation link is not configured. Please try again later."
-            else -> "Something went wrong. Please try again."
+            raw.contains("rate limit") || raw.contains("too many") ->
+                "Too many attempts. Please wait a moment and try again."
+            raw.contains("network") || raw.contains("timeout") || raw.contains("connection") ->
+                "Check your internet connection and try again."
+            raw.contains("invalid login") || raw.contains("invalid credentials") ->
+                "Gmail or password is incorrect."
+            raw.contains("already registered") || raw.contains("already been registered") ->
+                "An account with this Gmail already exists. Try signing in."
+            raw.contains("password") && raw.contains("short") ->
+                "Password must be at least 6 characters."
+            else ->
+                "Something went wrong. Please try again."
         }
     }
 }
