@@ -68,22 +68,8 @@ class AssistantViewModel @Inject constructor(
                 if (localReply != null) {
                     appendLocalConversation(clean, localReply)
                 } else {
-                    val result = aiGateway.sendMessage(clean, chatId, speak = true)
-                    chatId = result.chat_id ?: chatId
-                    if (!result.error.isNullOrBlank()) {
-                        _error.value = friendlyError(result.error)
-                    } else {
-                        val reply = result.reply.ifBlank { "I’m here. Tell me what you need." }
-                        _reply.value = reply
-                        _transcript.value = null
-                        _messages.value = _messages.value +
-                            AiMessage("local-user-" + System.nanoTime(), "user", clean) +
-                            AiMessage("local-assistant-" + System.nanoTime(), "assistant", reply)
-                        _chats.value = aiGateway.listChats()
-                        result.audio_base64?.let { encoded ->
-                            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { playPcm(encoded) }
-                        }
-                    }
+                    val reply = "I can work with the commands built into NEXA. Try “add task…”, “take a note…”, “remind me to… at 6 pm”, “what are my tasks”, or open Settings → Automations to create a recurring rule."
+                    appendLocalConversation(clean, reply)
                 }
             } catch (e: Exception) {
                 _error.value = friendlyError(e.message)
@@ -145,8 +131,15 @@ class AssistantViewModel @Inject constructor(
             reminderRepository.create(title, target.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault().id, null)
             return "Done — I set “" + title + "” for " + target.format(DateTimeFormatter.ofPattern("EEE, MMM d • h:mm a")) + "."
         }
+        if (normalized == "plan my day") {
+            val tasks = taskRepository.observeAllTasks().first().filter { it.status.name == "OPEN" }.take(5)
+            return if (tasks.isEmpty()) "Your day is clear — you have no open tasks yet." else "Here are your open tasks:\n" + tasks.joinToString("\n") { "• " + it.title }
+        }
+        if (normalized.startsWith("add event ")) {
+            return "I can add events from the Organizer right now. Open Organizer → Events and tap Event to choose the title, time and location."
+        }
         if (normalized == "help" || normalized == "what can you do") {
-            return "I can manage your tasks, reminders, notes and events without AI. For general questions and conversation, I can use the AI assistant when it’s available."
+            return "I can manage your tasks, reminders, notes and events with built-in commands — no AI model is required for those actions."
         }
         return null
     }
