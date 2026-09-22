@@ -243,7 +243,6 @@ private fun AuthenticatedApp(authViewModel: AuthViewModel) {
     }
         }
     }
-}
 
 @Composable
 private fun NexaBottomBar(navController: NavHostController) {
