@@ -22,6 +22,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexa.core.designsystem.NexaColors
 import com.nexa.core.network.AuthRepository
+import com.nexa.core.network.AutomationRule
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,7 +43,7 @@ class SettingsViewModel @Inject constructor(private val auth: AuthRepository) : 
 }
 
 @Composable
-fun SettingsScreen(onOpenMemoryCenter:()->Unit={}, onSignOut:()->Unit={}, onSubscription:()->Unit={}, viewModel:SettingsViewModel=hiltViewModel()) {
+fun SettingsScreen(onOpenMemoryCenter:()->Unit={}, onSignOut:()->Unit={}, onSubscription:()->Unit={}, onAutomations:()->Unit={}, viewModel:SettingsViewModel=hiltViewModel()) {
     val name by viewModel.displayName.collectAsState(); val pa by viewModel.assistantName.collectAsState(); val message by viewModel.message.collectAsState()
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
     var editName by rememberSaveable(name) { mutableStateOf(name) }; var editPa by rememberSaveable(pa){mutableStateOf(pa)}
@@ -54,6 +55,7 @@ fun SettingsScreen(onOpenMemoryCenter:()->Unit={}, onSignOut:()->Unit={}, onSubs
         SettingItem(Icons.Default.Person,"Account & Profile","Change your name and PA name"){dialog="profile"}
         SettingItem(Icons.Default.Memory,"Memory","Review, approve, edit or reject saved memories"){onOpenMemoryCenter()}
         SettingItem(Icons.Default.CreditCard,"Subscription","View plans, features and pricing"){onSubscription()}
+        SettingItem(Icons.Default.AutoAwesome,"Automations","Create recurring tasks, reminders and notes without AI"){onAutomations()}
         SettingItem(Icons.Default.Apps,"Connected Apps","Review integrations and permissions"){dialog="apps"}
         SettingItem(Icons.Default.Notifications,"Notifications","Open Android notification settings"){context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,context.packageName))}
         SettingItem(Icons.Default.Lock,"Privacy & Permissions","Open NEXA app permissions"){context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+context.packageName)))}
@@ -97,6 +99,75 @@ private fun HelpSupportDialog(onDismiss: () -> Unit, onWhatsApp: () -> Unit) {
     )
 }
 
+
+@HiltViewModel
+class AutomationViewModel @Inject constructor(private val auth: AuthRepository) : ViewModel() {
+    private val _rules = MutableStateFlow<List<AutomationRule>>(emptyList())
+    val rules: StateFlow<List<AutomationRule>> = _rules.asStateFlow()
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message.asStateFlow()
+
+    init { refresh() }
+
+    fun refresh() = viewModelScope.launch { runCatching { auth.listAutomations() }.onSuccess { _rules.value = it }.onFailure { _message.value = "Could not load automations." } }
+    fun create(name:String, intervalSeconds:Long, actionType:String, title:String, body:String?=null) = viewModelScope.launch {
+        runCatching { auth.createAutomation(name, intervalSeconds, actionType, title, body) }
+            .onSuccess { if (it) { _message.value = "Automation created."; refresh() } else _message.value = "Could not create automation." }
+            .onFailure { _message.value = "Could not create automation." }
+    }
+    fun toggle(rule: AutomationRule) = viewModelScope.launch { runCatching { auth.setAutomationEnabled(rule.id,!rule.enabled); refresh() }.onFailure { _message.value="Could not update automation." } }
+    fun delete(rule: AutomationRule) = viewModelScope.launch { runCatching { auth.deleteAutomation(rule.id); refresh() }.onFailure { _message.value="Could not delete automation." } }
+}
+
+@Composable
+fun AutomationScreen(onBack:()->Unit, viewModel:AutomationViewModel=hiltViewModel()) {
+    val rules by viewModel.rules.collectAsState()
+    val message by viewModel.message.collectAsState()
+    var showCreate by rememberSaveable { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).systemBarsPadding().padding(horizontal=16.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Back")}
+            Column(Modifier.weight(1f)){Text("Automations",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("NEXA can run these rules on schedule without an AI model.",style=MaterialTheme.typography.bodySmall,color=NexaColors.OnSurfaceMuted)}
+        }
+        Card(shape=RoundedCornerShape(18.dp),colors=CardDefaults.cardColors(containerColor=NexaColors.EventBlueBg)){
+            Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+                Text("Simple rule engine",fontWeight=FontWeight.Bold)
+                Text("Pick what should happen, how often it should happen, and NEXA will schedule it.",style=MaterialTheme.typography.bodySmall)
+            }
+        }
+        Button(onClick={showCreate=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Add,null);Spacer(Modifier.width(6.dp));Text("Create automation")}
+        if(rules.isEmpty()) EmptyAutomationState() else rules.forEach { rule ->
+            Card(shape=RoundedCornerShape(18.dp)) {
+                Row(Modifier.fillMaxWidth().padding(14.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(rule.name,fontWeight=FontWeight.Bold)
+                        Text(rule.actionType.replace("CREATE_","").lowercase().replaceFirstChar{it.uppercase()}+" • "+(rule.triggerType.lowercase().replaceFirstChar{it.uppercase()}),style=MaterialTheme.typography.bodySmall,color=NexaColors.OnSurfaceMuted)
+                    }
+                    Switch(checked=rule.enabled,onCheckedChange={viewModel.toggle(rule)})
+                    IconButton(onClick={viewModel.delete(rule)}){Icon(Icons.Default.Delete,"Delete")}
+                }
+            }
+        }
+        message?.let { Text(it,style=MaterialTheme.typography.labelSmall,color=NexaColors.OnSurfaceMuted) }
+    }
+    if(showCreate) AutomationCreateDialog({showCreate=false}) { name,seconds,type,title,body -> viewModel.create(name,seconds,type,title,body);showCreate=false }
+}
+
+@Composable private fun EmptyAutomationState(){Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp)){Column(Modifier.padding(18.dp)){Text("No automations yet",fontWeight=FontWeight.Bold);Text("Create one from the templates below and NEXA will run it automatically.",style=MaterialTheme.typography.bodySmall,color=NexaColors.OnSurfaceMuted)}}}
+
+@Composable private fun AutomationCreateDialog(onDismiss:()->Unit,onCreate:(String,Long,String,String,String?)->Unit){
+    var name by rememberSaveable{mutableStateOf("")};var action by rememberSaveable{mutableStateOf("CREATE_TASK")};var title by rememberSaveable{mutableStateOf("")};var body by rememberSaveable{mutableStateOf("")};var frequency by rememberSaveable{mutableStateOf("DAILY")}
+    val seconds=if(frequency=="HOURLY")3600L else if(frequency=="WEEKLY")604800L else 86400L
+    AlertDialog(onDismissRequest=onDismiss,title={Text("New automation")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+        OutlinedTextField(name,{name=it},label={Text("Automation name")},singleLine=true,modifier=Modifier.fillMaxWidth())
+        Text("What should happen?",style=MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("CREATE_TASK" to "Task","CREATE_REMINDER" to "Reminder","CREATE_NOTE" to "Note").forEach{(v,l)->FilterChip(action==v,{action=v},label={Text(l)})}}
+        OutlinedTextField(title,{title=it},label={Text("What should NEXA create?")},singleLine=true,modifier=Modifier.fillMaxWidth())
+        if(action!="CREATE_TASK")OutlinedTextField(body,{body=it},label={Text("Details (optional)")},minLines=2,modifier=Modifier.fillMaxWidth())
+        Text("How often?",style=MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("HOURLY" to "Hourly","DAILY" to "Daily","WEEKLY" to "Weekly").forEach{(v,l)->FilterChip(frequency==v,{frequency=v},label={Text(l)})}}
+    }},confirmButton={Button(onClick={onCreate(name.ifBlank{"My automation"},seconds,action,title,body.ifBlank{null})},enabled=title.isNotBlank()){Text("Create")}},dismissButton={TextButton(onClick=onDismiss){Text("Cancel")}})
+}
 
 @Composable
 fun SubscriptionScreen(
