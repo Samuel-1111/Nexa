@@ -2,7 +2,6 @@ package com.nexa.core.network
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
-import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.ktor.client.HttpClient
@@ -129,17 +128,14 @@ class AuthRepository(private val client: SupabaseClient, private val httpClient:
         }
     }
 
+    // No confirmation link, no OTP -- the account is auto-confirmed
+    // server-side (migration 019_auto_confirm_signup_no_otp, a BEFORE INSERT
+    // trigger on auth.users). This returns an active session immediately.
     suspend fun createAccount(email: String, password: String) {
-        // Keep the confirmation callback on the native NEXA deep link.
-        // The same URI must be present in Supabase Auth Redirect URLs.
-        client.auth.signUpWith(Email, redirectUrl = "nexa://auth") {
+        client.auth.signUpWith(Email) {
             this.email = email.trim()
             this.password = password
         }
-    }
-
-    suspend fun resendSignupConfirmation(email: String) {
-        client.auth.resendEmail(OtpType.Email.SIGNUP, email.trim())
     }
 
     suspend fun sendPasswordResetEmail(email: String) {
