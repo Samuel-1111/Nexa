@@ -66,7 +66,7 @@ class LocalTaskRepository(private val database: NexaDatabase) : TaskRepository {
             database.taskDao().softDelete(id.value, now)
             database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "TASK", id.value, "UPSERT", 0, "{\"id\":\"" + id.value + "\"}", "PENDING", 0, null, null, now, now))
         }
-    }}
+    }
     override suspend fun update(id: EntityId, title: String, priority: Priority, dueAt: Instant?): Task {
         val existing = database.taskDao().get(id.value) ?: return Task(id, title, priority = priority, dueAt = dueAt)
         val now = SystemClock.now().toEpochMilli()
