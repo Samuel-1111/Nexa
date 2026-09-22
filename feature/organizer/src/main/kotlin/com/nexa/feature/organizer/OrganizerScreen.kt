@@ -55,6 +55,10 @@ class OrganizerViewModel @Inject constructor(
     fun deleteReminder(id: com.nexa.core.common.EntityId) = viewModelScope.launch { reminders.delete(id) }
     fun deleteNote(id: com.nexa.core.common.EntityId) = viewModelScope.launch { notes.delete(id) }
     fun deleteEvent(id: com.nexa.core.common.EntityId) = viewModelScope.launch { events.delete(id) }
+    fun updateTask(id: com.nexa.core.common.EntityId, title: String, priority: Priority, due: Instant?) = viewModelScope.launch { tasks.update(id, title.trim(), priority, due) }
+    fun updateReminder(id: com.nexa.core.common.EntityId, title: String, body: String, at: Instant) = viewModelScope.launch { reminders.update(id, title.trim(), body.trim(), at, ZoneId.systemDefault().id) }
+    fun updateNote(id: com.nexa.core.common.EntityId, title: String, body: String, ref: String) = viewModelScope.launch { if (body.isNotBlank()) notes.update(id, title.trim().ifBlank { null }, body.trim(), ref.trim().ifBlank { null }) }
+    fun updateEvent(id: com.nexa.core.common.EntityId, title: String, description: String, location: String, start: Instant, end: Instant) = viewModelScope.launch { if (title.isNotBlank() && end.isAfter(start)) events.update(id, title.trim(), description.trim().ifBlank { null }, location.trim().ifBlank { null }, start, end) }
     fun addTask(title: String, priority: Priority, due: Instant?) = viewModelScope.launch { if (title.isNotBlank()) tasks.create(title.trim(), priority, due) }
     fun addReminder(title: String, body: String, at: Instant) = viewModelScope.launch { if (title.isNotBlank()) reminders.create(title.trim(), at, ZoneId.systemDefault().id, body.trim().ifBlank { null }) }
     fun addNote(title: String, body: String, ref: String) = viewModelScope.launch { if (body.isNotBlank()) notes.create(title.trim().ifBlank { null }, body.trim(), NoteSource.TEXT, ref.trim().ifBlank { null }) }
@@ -71,6 +75,10 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
     var reminderDialog by rememberSaveable { mutableStateOf(false) }
     var noteDialog by rememberSaveable { mutableStateOf(false) }
     var eventDialog by rememberSaveable { mutableStateOf(false) }
+    var editingTask by remember { mutableStateOf<Task?>(null) }
+    var editingReminder by remember { mutableStateOf<Reminder?>(null) }
+    var editingNote by remember { mutableStateOf<Note?>(null) }
+    var editingEvent by remember { mutableStateOf<CalendarEvent?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -95,9 +103,9 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
 
     Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 10.dp)) {
         Text("Organizer", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text("Tasks • Reminders • Events", style = MaterialTheme.typography.bodySmall, color = NexaColors.OnSurfaceMuted)
+        Text("Tasks • Reminders • Notes • Events", style = MaterialTheme.typography.bodySmall, color = NexaColors.OnSurfaceMuted)
         Spacer(Modifier.height(7.dp))
-        val visibleSections = listOf(OrganizerSection.TASKS, OrganizerSection.REMINDERS, OrganizerSection.EVENTS)
+        val visibleSections = listOf(OrganizerSection.TASKS, OrganizerSection.REMINDERS, OrganizerSection.NOTES, OrganizerSection.EVENTS)
         TabRow(selectedTabIndex = visibleSections.indexOf(section).coerceAtLeast(0)) {
             visibleSections.forEach { item ->
                 Tab(
@@ -118,18 +126,22 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
         if (showOverview) {
             OrganizerOverview(state, onSection = { section = it; showOverview = false; showNotes = false }, onNotes = { showOverview = false; showNotes = true })
         } else if (showNotes) {
-            NoteSection(state.notes, { noteDialog = true }, viewModel::deleteNote)
+            NoteSection(state.notes, { noteDialog = true }, viewModel::deleteNote, { editingNote = it })
         } else when(section) {
-            OrganizerSection.TASKS -> TaskSection(state.tasks, { taskDialog = true }, viewModel::toggle, viewModel::deleteTask)
-            OrganizerSection.REMINDERS -> ReminderSection(state.reminders, { prepareReminderCreation() }, viewModel::deleteReminder)
+            OrganizerSection.TASKS -> TaskSection(state.tasks, { taskDialog = true }, viewModel::toggle, viewModel::deleteTask, { editingTask = it })
+            OrganizerSection.REMINDERS -> ReminderSection(state.reminders, { prepareReminderCreation() }, viewModel::deleteReminder, { editingReminder = it })
             OrganizerSection.NOTES -> NoteSection(state.notes, { noteDialog = true }, viewModel::deleteNote)
-            OrganizerSection.EVENTS -> EventSection(state.events, { eventDialog = true }, viewModel::deleteEvent)
+            OrganizerSection.EVENTS -> EventSection(state.events, { eventDialog = true }, viewModel::deleteEvent, { editingEvent = it })
         }
     }
-    if(taskDialog) TaskDialog({taskDialog=false}) { t,p,d -> viewModel.addTask(t,p,d); taskDialog=false }
-    if(reminderDialog) ReminderDialog({reminderDialog=false}) { t,b,d -> viewModel.addReminder(t,b,d); reminderDialog=false }
-    if(noteDialog) NoteDialog({noteDialog=false}) { t,b,r -> viewModel.addNote(t,b,r); noteDialog=false }
-    if(eventDialog) EventDialog({eventDialog=false}) { t,d,l,s,e -> viewModel.addEvent(t,d,l,s,e); eventDialog=false }
+    if(taskDialog) TaskDialog(null, {taskDialog=false}) { t,p,d -> viewModel.addTask(t,p,d); taskDialog=false }
+    if(reminderDialog) ReminderDialog(null, {reminderDialog=false}) { t,b,d -> viewModel.addReminder(t,b,d); reminderDialog=false }
+    if(noteDialog) NoteDialog(null, {noteDialog=false}) { t,b,r -> viewModel.addNote(t,b,r); noteDialog=false }
+    if(eventDialog) EventDialog(null, {eventDialog=false}) { t,d,l,st,en -> viewModel.addEvent(t,d,l,st,en); eventDialog=false }
+    editingTask?.let { item -> TaskDialog(item, { editingTask = null }) { t,p,d -> viewModel.updateTask(item.id,t,p,d); editingTask=null } }
+    editingReminder?.let { item -> ReminderDialog(item, { editingReminder = null }) { t,b,d -> viewModel.updateReminder(item.id,t,b,d); editingReminder=null } }
+    editingNote?.let { item -> NoteDialog(item, { editingNote = null }) { t,b,r -> viewModel.updateNote(item.id,t,b,r); editingNote=null } }
+    editingEvent?.let { item -> EventDialog(item, { editingEvent = null }) { t,d,l,st,en -> viewModel.updateEvent(item.id,t,d,l,st,en); editingEvent=null } }
 }
 
 @Composable
@@ -162,7 +174,7 @@ private fun RowScope.SummaryButton(label: String, count: Int, icon: androidx.com
 
 
 @Composable
-private fun TaskSection(tasks: List<Task>, add: () -> Unit, toggle: (Task) -> Unit, delete: (com.nexa.core.common.EntityId) -> Unit) {
+private fun TaskSection(tasks: List<Task>, add: () -> Unit, toggle: (Task) -> Unit, delete: (com.nexa.core.common.EntityId) -> Unit, edit: (Task) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -189,6 +201,7 @@ private fun TaskSection(tasks: List<Task>, add: () -> Unit, toggle: (Task) -> Un
                                 color = NexaColors.OnSurfaceMuted,
                             )
                         }
+                        IconButton(onClick = { edit(task) }) { Icon(Icons.Default.Edit, contentDescription = "Edit task") }
                         IconButton(onClick = { delete(task.id) }) { Icon(Icons.Default.Delete, contentDescription = "Delete task") }
                         AssistChip(onClick = {}, label = { Text(task.priority.name.lowercase().replaceFirstChar { it.uppercase() }) })
                     }
@@ -199,7 +212,7 @@ private fun TaskSection(tasks: List<Task>, add: () -> Unit, toggle: (Task) -> Un
 }
 
 @Composable
-private fun ReminderSection(reminders: List<Reminder>, add: () -> Unit, delete: (com.nexa.core.common.EntityId) -> Unit) {
+private fun ReminderSection(reminders: List<Reminder>, add: () -> Unit, delete: (com.nexa.core.common.EntityId) -> Unit, edit: (Reminder) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -221,6 +234,7 @@ private fun ReminderSection(reminders: List<Reminder>, add: () -> Unit, delete: 
                             Text(reminder.triggerAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEEE, MMM d • h:mm a")), style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
                             reminder.body?.let { Text(it, maxLines = 2, style = MaterialTheme.typography.bodySmall) }
                         }
+                        IconButton(onClick = { edit(reminder) }) { Icon(Icons.Default.Edit, contentDescription = "Edit reminder") }
                         IconButton(onClick = { delete(reminder.id) }) { Icon(Icons.Default.Delete, contentDescription = "Delete reminder") }
                     }
                 }
@@ -230,7 +244,7 @@ private fun ReminderSection(reminders: List<Reminder>, add: () -> Unit, delete: 
 }
 
 @Composable
-private fun NoteSection(notes: List<Note>, add: () -> Unit, delete: (com.nexa.core.common.EntityId) -> Unit) {
+private fun NoteSection(notes: List<Note>, add: () -> Unit, delete: (com.nexa.core.common.EntityId) -> Unit, edit: (Note) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -249,7 +263,10 @@ private fun NoteSection(notes: List<Note>, add: () -> Unit, delete: (com.nexa.co
                         Spacer(Modifier.height(3.dp))
                         Text(note.body, maxLines = 4)
                         note.reference?.let { Text("Reference: " + it, style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted) }
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { IconButton(onClick = { delete(note.id) }) { Icon(Icons.Default.Delete, contentDescription = "Delete note") } }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            IconButton(onClick = { edit(note) }) { Icon(Icons.Default.Edit, contentDescription = "Edit note") }
+                            IconButton(onClick = { delete(note.id) }) { Icon(Icons.Default.Delete, contentDescription = "Delete note") }
+                        }
                     }
                 }
             }
@@ -258,7 +275,7 @@ private fun NoteSection(notes: List<Note>, add: () -> Unit, delete: (com.nexa.co
 }
 
 @Composable
-private fun EventSection(events: List<CalendarEvent>, add: () -> Unit, delete: (com.nexa.core.common.EntityId) -> Unit) {
+private fun EventSection(events: List<CalendarEvent>, add: () -> Unit, delete: (com.nexa.core.common.EntityId) -> Unit, edit: (CalendarEvent) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -280,6 +297,7 @@ private fun EventSection(events: List<CalendarEvent>, add: () -> Unit, delete: (
                             Text(event.startsAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE, MMM d • h:mm a")), style = MaterialTheme.typography.labelSmall, color = NexaColors.OnSurfaceMuted)
                             event.location?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                         }
+                        IconButton(onClick = { edit(event) }) { Icon(Icons.Default.Edit, contentDescription = "Edit event") }
                         IconButton(onClick = { delete(event.id) }) { Icon(Icons.Default.Delete, contentDescription = "Delete event") }
                     }
                 }
@@ -292,10 +310,51 @@ private fun EventSection(events: List<CalendarEvent>, add: () -> Unit, delete: (
 
 @Composable private fun DateTimeButton(value: Instant,label:String,onChange:(Instant)->Unit){ val context=androidx.compose.ui.platform.LocalContext.current; OutlinedButton(onClick={val c=Calendar.getInstance().apply{timeInMillis=value.toEpochMilli()};DatePickerDialog(context,{_,y,m,d->TimePickerDialog(context,{_,h,min->onChange(Calendar.getInstance().apply{set(y,m,d,h,min,0)}.toInstant())},c.get(Calendar.HOUR_OF_DAY),c.get(Calendar.MINUTE),false).show()},c.get(Calendar.YEAR),c.get(Calendar.MONTH),c.get(Calendar.DAY_OF_MONTH)).show()},modifier=Modifier.fillMaxWidth()){Text(label+": "+value.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE, MMM d • h:mm a")))} }
 
-@Composable private fun TaskDialog(onDismiss:()->Unit,onSave:(String,Priority,Instant?)->Unit){var title by rememberSaveable{mutableStateOf("")};var p by rememberSaveable{mutableStateOf(Priority.NONE)};var due by remember{mutableStateOf<Instant?>(null)};AlertDialog(onDismissRequest=onDismiss,title={Text("New task")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){OutlinedTextField(title,{title=it},label={Text("Task")},singleLine=true,modifier=Modifier.fillMaxWidth());Text("Priority",style=MaterialTheme.typography.labelMedium);Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){Priority.entries.forEach{q->FilterChip(p==q,{p=q},label={Text(q.name.lowercase().replaceFirstChar{it.uppercase()})})}};due?.let{DateTimeButton(it,"Due"){due=it}} ?: OutlinedButton(onClick={due=Instant.now().plusSeconds(3600)},modifier=Modifier.fillMaxWidth()){Text("Add due date & time")}}},confirmButton={Button(onClick={onSave(title,p,due)},enabled=title.isNotBlank()){Text("Add task")}},dismissButton={TextButton(onClick=onDismiss){Text("Cancel")}})}
+@Composable private fun TaskDialog(existing: Task?, onDismiss:()->Unit, onSave:(String,Priority,Instant?)->Unit){
+    var title by rememberSaveable(existing?.id?.value) { mutableStateOf(existing?.title ?: "") }
+    var p by rememberSaveable(existing?.id?.value) { mutableStateOf(existing?.priority ?: Priority.NONE) }
+    var due by remember(existing?.id?.value) { mutableStateOf(existing?.dueAt) }
+    AlertDialog(onDismissRequest=onDismiss,title={Text(if(existing==null) "New task" else "Edit task")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+        OutlinedTextField(title,{title=it},label={Text("Task")},singleLine=true,modifier=Modifier.fillMaxWidth())
+        Text("Priority",style=MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){Priority.entries.forEach{q->FilterChip(p==q,{p=q},label={Text(q.name.lowercase().replaceFirstChar{it.uppercase()})})}}
+        due?.let{DateTimeButton(it,"Due"){due=it}} ?: OutlinedButton(onClick={due=Instant.now().plusSeconds(3600)},modifier=Modifier.fillMaxWidth()){Text("Add due date & time")}
+    }},confirmButton={Button(onClick={onSave(title,p,due)},enabled=title.isNotBlank()){Text(if(existing==null)"Add task" else "Save changes")}},dismissButton={TextButton(onClick=onDismiss){Text("Cancel")}})
+}
 
-@Composable private fun ReminderDialog(onDismiss:()->Unit,onSave:(String,String,Instant)->Unit){var title by rememberSaveable{mutableStateOf("")};var body by rememberSaveable{mutableStateOf("")};var at by remember{mutableStateOf(Instant.now().plusSeconds(3600))};AlertDialog(onDismissRequest=onDismiss,title={Text("New reminder")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){OutlinedTextField(title,{title=it},label={Text("Title")},singleLine=true,modifier=Modifier.fillMaxWidth());OutlinedTextField(body,{body=it},label={Text("Details")},minLines=2,modifier=Modifier.fillMaxWidth());DateTimeButton(at,"Alarm time"){at=it};Text(if (at.isAfter(Instant.now())) "NEXA will schedule an alarm and notification." else "Choose a future date and time.",style=MaterialTheme.typography.labelSmall,color=if (at.isAfter(Instant.now())) NexaColors.OnSurfaceMuted else MaterialTheme.colorScheme.error)}},confirmButton={Button(onClick={onSave(title,body,at)},enabled=title.isNotBlank() && at.isAfter(Instant.now())){Text("Set reminder")}},dismissButton={TextButton(onClick=onDismiss){Text("Cancel")}})}
+@Composable private fun ReminderDialog(existing: Reminder?, onDismiss:()->Unit,onSave:(String,String,Instant)->Unit){
+    var title by rememberSaveable(existing?.id?.value){mutableStateOf(existing?.title ?: "")}
+    var body by rememberSaveable(existing?.id?.value){mutableStateOf(existing?.body ?: "")}
+    var at by remember(existing?.id?.value){mutableStateOf(existing?.triggerAt ?: Instant.now().plusSeconds(3600))}
+    AlertDialog(onDismissRequest=onDismiss,title={Text(if(existing==null)"New reminder" else "Edit reminder")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+        OutlinedTextField(title,{title=it},label={Text("Title")},singleLine=true,modifier=Modifier.fillMaxWidth())
+        OutlinedTextField(body,{body=it},label={Text("Details")},minLines=2,modifier=Modifier.fillMaxWidth())
+        DateTimeButton(at,"Alarm time"){at=it}
+        Text(if(at.isAfter(Instant.now()))"NEXA will schedule an alarm and notification." else "Choose a future date and time.",style=MaterialTheme.typography.labelSmall,color=if(at.isAfter(Instant.now()))NexaColors.OnSurfaceMuted else MaterialTheme.colorScheme.error)
+    }},confirmButton={Button(onClick={onSave(title,body,at)},enabled=title.isNotBlank()&&at.isAfter(Instant.now())){Text(if(existing==null)"Set reminder" else "Save changes")}},dismissButton={TextButton(onClick=onDismiss){Text("Cancel")}})
+}
 
-@Composable private fun NoteDialog(onDismiss:()->Unit,onSave:(String,String,String)->Unit){var title by rememberSaveable{mutableStateOf("")};var body by rememberSaveable{mutableStateOf("")};var ref by rememberSaveable{mutableStateOf("")};AlertDialog(onDismissRequest=onDismiss,title={Text("New note")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){OutlinedTextField(title,{title=it},label={Text("Subject")},singleLine=true,modifier=Modifier.fillMaxWidth());OutlinedTextField(body,{body=it},label={Text("Body")},minLines=5,modifier=Modifier.fillMaxWidth());OutlinedTextField(ref,{ref=it},label={Text("Reference (optional)")},singleLine=true,modifier=Modifier.fillMaxWidth())}},confirmButton={Button(onClick={onSave(title,body,ref)},enabled=body.isNotBlank()){Text("Save note")}},dismissButton={TextButton(onClick=onDismiss){Text("Cancel")}})}
+@Composable private fun NoteDialog(existing: Note?, onDismiss:()->Unit,onSave:(String,String,String)->Unit){
+    var title by rememberSaveable(existing?.id?.value){mutableStateOf(existing?.title ?: "")}
+    var body by rememberSaveable(existing?.id?.value){mutableStateOf(existing?.body ?: "")}
+    var ref by rememberSaveable(existing?.id?.value){mutableStateOf(existing?.reference ?: "")}
+    AlertDialog(onDismissRequest=onDismiss,title={Text(if(existing==null)"New note" else "Edit note")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+        OutlinedTextField(title,{title=it},label={Text("Subject")},singleLine=true,modifier=Modifier.fillMaxWidth())
+        OutlinedTextField(body,{body=it},label={Text("Body")},minLines=5,modifier=Modifier.fillMaxWidth())
+        OutlinedTextField(ref,{ref=it},label={Text("Reference (optional)")},singleLine=true,modifier=Modifier.fillMaxWidth())
+    }},confirmButton={Button(onClick={onSave(title,body,ref)},enabled=body.isNotBlank()){Text(if(existing==null)"Save note" else "Save changes")}},dismissButton={TextButton(onClick=onDismiss){Text("Cancel")}})
+}
 
-@Composable private fun EventDialog(onDismiss:()->Unit,onSave:(String,String,String,Instant,Instant)->Unit){var title by rememberSaveable{mutableStateOf("")};var desc by rememberSaveable{mutableStateOf("")};var loc by rememberSaveable{mutableStateOf("")};var start by remember{mutableStateOf(Instant.now().plusSeconds(3600))};var end by remember{mutableStateOf(Instant.now().plusSeconds(7200))};AlertDialog(onDismissRequest=onDismiss,title={Text("New event")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){OutlinedTextField(title,{title=it},label={Text("Event title")},singleLine=true,modifier=Modifier.fillMaxWidth());OutlinedTextField(desc,{desc=it},label={Text("Description")},minLines=2,modifier=Modifier.fillMaxWidth());OutlinedTextField(loc,{loc=it},label={Text("Location")},singleLine=true,modifier=Modifier.fillMaxWidth());DateTimeButton(start,"Starts"){start=it};DateTimeButton(end,"Ends"){end=it}}},confirmButton={Button(onClick={onSave(title,desc,loc,start,end)},enabled=title.isNotBlank()&&end.isAfter(start)){Text("Add event")}},dismissButton={TextButton(onClick=onDismiss){Text("Cancel")}})}
+@Composable private fun EventDialog(existing: CalendarEvent?, onDismiss:()->Unit,onSave:(String,String,String,Instant,Instant)->Unit){
+    var title by rememberSaveable(existing?.id?.value){mutableStateOf(existing?.title ?: "")}
+    var desc by rememberSaveable(existing?.id?.value){mutableStateOf(existing?.description ?: "")}
+    var loc by rememberSaveable(existing?.id?.value){mutableStateOf(existing?.location ?: "")}
+    var start by remember(existing?.id?.value){mutableStateOf(existing?.startsAt ?: Instant.now().plusSeconds(3600))}
+    var end by remember(existing?.id?.value){mutableStateOf(existing?.endsAt ?: Instant.now().plusSeconds(7200))}
+    AlertDialog(onDismissRequest=onDismiss,title={Text(if(existing==null)"New event" else "Edit event")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+        OutlinedTextField(title,{title=it},label={Text("Event title")},singleLine=true,modifier=Modifier.fillMaxWidth())
+        OutlinedTextField(desc,{desc=it},label={Text("Description")},minLines=2,modifier=Modifier.fillMaxWidth())
+        OutlinedTextField(loc,{loc=it},label={Text("Location")},singleLine=true,modifier=Modifier.fillMaxWidth())
+        DateTimeButton(start,"Starts"){start=it};DateTimeButton(end,"Ends"){end=it}
+    }},confirmButton={Button(onClick={onSave(title,desc,loc,start,end)},enabled=title.isNotBlank()&&end.isAfter(start)){Text(if(existing==null)"Add event" else "Save changes")}},dismissButton={TextButton(onClick=onDismiss){Text("Cancel")}})
+}
