@@ -31,6 +31,7 @@ import com.nexa.feature.onboarding.AuthViewModel
 import com.nexa.feature.onboarding.PersonalizeNexaScreen
 import com.nexa.feature.organizer.OrganizerScreen
 import com.nexa.feature.settings.SettingsScreen
+import com.nexa.feature.settings.SubscriptionScreen
 import com.nexa.feature.today.TodayRoute
 import io.github.jan.supabase.auth.status.SessionStatus
 
@@ -192,14 +193,36 @@ private fun LoadingAuth() {
 @Composable
 private fun AuthenticatedApp(authViewModel: AuthViewModel) {
     val navController = rememberNavController()
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("nexa_launch", Context.MODE_PRIVATE) }
+    var trialNoticeVisible by rememberSaveable { mutableStateOf(!prefs.getBoolean("trial_notice_dismissed", false)) }
 
     Scaffold(
         bottomBar = { NexaBottomBar(navController) },
     ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            if (trialNoticeVisible) {
+                Card(
+                    Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                ) {
+                    Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = 9.dp, bottom = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("You’re on your 3-day free trial 🎉", fontWeight = FontWeight.Bold)
+                            Text("Explore NEXA freely. You can choose a plan anytime from Settings.", style = MaterialTheme.typography.bodySmall)
+                        }
+                        IconButton(onClick = {
+                            prefs.edit().putBoolean("trial_notice_dismissed", true).apply()
+                            trialNoticeVisible = false
+                        }) { Icon(Icons.Default.Close, "Dismiss") }
+                    }
+                }
+            }
         NavHost(
             navController,
             startDestination = TopLevelDestination.Today.route,
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier.weight(1f),
         ) {
             composable(TopLevelDestination.Today.route) { TodayRoute(onOpenAssistant = { navController.navigate(TopLevelDestination.Assistant.route) }, onOpenOrganizer = { section -> navController.navigate("organizer/" + section) }) }
             composable(TopLevelDestination.Assistant.route) { AssistantScreen() }
@@ -208,10 +231,13 @@ private fun AuthenticatedApp(authViewModel: AuthViewModel) {
                 SettingsScreen(
                     onOpenMemoryCenter = { navController.navigate("memory") },
                     onSignOut = { authViewModel.signOut() },
-                    onSubscription = { /* subscription gate is handled at the app boundary */ },
+                    onSubscription = { navController.navigate("subscription") },
                 )
             }
             composable("memory") { MemoryScreen() }
+            composable("subscription") { SubscriptionScreen(onBack = { navController.popBackStack() }) }
+        }
+    }
         }
     }
 }
