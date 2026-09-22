@@ -130,7 +130,7 @@ fun OrganizerScreen(initialSection: String = "OVERVIEW", viewModel: OrganizerVie
         } else when(section) {
             OrganizerSection.TASKS -> TaskSection(state.tasks, { taskDialog = true }, viewModel::toggle, viewModel::deleteTask, { editingTask = it })
             OrganizerSection.REMINDERS -> ReminderSection(state.reminders, { prepareReminderCreation() }, viewModel::deleteReminder, { editingReminder = it })
-            OrganizerSection.NOTES -> NoteSection(state.notes, { noteDialog = true }, viewModel::deleteNote)
+            OrganizerSection.NOTES -> NoteSection(state.notes, { noteDialog = true }, viewModel::deleteNote, { editingNote = it })
             OrganizerSection.EVENTS -> EventSection(state.events, { eventDialog = true }, viewModel::deleteEvent, { editingEvent = it })
         }
     }
