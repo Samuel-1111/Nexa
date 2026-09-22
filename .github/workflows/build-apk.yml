@@ -74,3 +74,4 @@ jobs:
           if-no-files-found: error
 
 # Cloud build uses the GitHub-hosted Android SDK.
+# Fresh tester build trigger.
