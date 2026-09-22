@@ -31,6 +31,7 @@ import com.nexa.feature.onboarding.AuthViewModel
 import com.nexa.feature.onboarding.PersonalizeNexaScreen
 import com.nexa.feature.organizer.OrganizerScreen
 import com.nexa.feature.settings.SettingsScreen
+import com.nexa.feature.settings.AutomationScreen
 import com.nexa.feature.settings.SubscriptionScreen
 import com.nexa.feature.today.TodayRoute
 import io.github.jan.supabase.auth.status.SessionStatus
@@ -232,10 +233,12 @@ private fun AuthenticatedApp(authViewModel: AuthViewModel) {
                     onOpenMemoryCenter = { navController.navigate("memory") },
                     onSignOut = { authViewModel.signOut() },
                     onSubscription = { navController.navigate("subscription") },
+                    onAutomations = { navController.navigate("automations") },
                 )
             }
             composable("memory") { MemoryScreen() }
             composable("subscription") { SubscriptionScreen(onBack = { navController.popBackStack() }) }
+            composable("automations") { AutomationScreen(onBack = { navController.popBackStack() }) }
         }
     }
         }
