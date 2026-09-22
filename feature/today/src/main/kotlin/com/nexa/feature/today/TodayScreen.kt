@@ -1,6 +1,7 @@
 package com.nexa.feature.today
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -44,22 +45,32 @@ fun TodayRoute(
                 ) {
                     // Compact header: everything from NEXA to the bottom action fits
                     // on one normal phone screen without vertical scrolling.
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                assistantName,
-                                style = MaterialTheme.typography.titleLarge,
-                                color = NexaColors.Primary,
-                                fontWeight = FontWeight.ExtraBold,
-                            )
-                            Text(
-                                "Your Personal Assistant",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = NexaColors.PrimaryDark,
-                            )
-                        }
-                        Card(shape = RoundedCornerShape(50), colors = CardDefaults.cardColors(containerColor = NexaColors.Surface)) {
-                            Icon(Icons.Default.Person, null, Modifier.padding(6.dp), tint = NexaColors.Primary)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(28.dp),
+                        colors = CardDefaults.cardColors(containerColor = NexaColors.Primary),
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    Brush.linearGradient(listOf(NexaColors.Primary, NexaColors.PrimaryDark)),
+                                    RoundedCornerShape(28.dp)
+                                )
+                                .padding(18.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text("NEXA", style = MaterialTheme.typography.labelMedium, color = androidx.compose.ui.graphics.Color.White.copy(alpha=.75f), fontWeight=FontWeight.Bold)
+                                        Text(assistantName, style = MaterialTheme.typography.headlineSmall, color=androidx.compose.ui.graphics.Color.White, fontWeight=FontWeight.ExtraBold)
+                                    }
+                                    Surface(shape=RoundedCornerShape(18.dp), color=androidx.compose.ui.graphics.Color.White.copy(alpha=.16f)) {
+                                        Icon(Icons.Default.AutoAwesome, null, Modifier.padding(11.dp), tint=androidx.compose.ui.graphics.Color.White)
+                                    }
+                                }
+                                Text("Your personal command centre", style=MaterialTheme.typography.bodySmall, color=androidx.compose.ui.graphics.Color.White.copy(alpha=.82f))
+                            }
                         }
                     }
 
@@ -89,7 +100,7 @@ fun TodayRoute(
                             Icon(Icons.Default.AutoAwesome, null, modifier = Modifier.size(18.dp), tint = NexaColors.Primary)
                             Spacer(Modifier.width(7.dp))
                             Text(
-                                "Today is a new opportunity to build the life you want.",
+                                "Make today lighter. NEXA keeps the little things moving.",
                                 Modifier.weight(1f),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.SemiBold,
@@ -100,8 +111,9 @@ fun TodayRoute(
                     }
 
                     Card(
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(22.dp),
                         colors = CardDefaults.cardColors(containerColor = NexaColors.Surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
                     ) {
                         Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
