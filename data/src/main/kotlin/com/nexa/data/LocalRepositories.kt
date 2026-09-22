@@ -77,6 +77,7 @@ class LocalTaskRepository(private val database: NexaDatabase) : TaskRepository {
         }
         return Task(id, title, priority = priority, dueAt = dueAt, status = TaskStatus.valueOf(updated.status), completedAt = updated.completedAtEpochMs?.let(Instant::ofEpochMilli))
     }
+}
 
 class LocalReminderRepository(
     private val database: NexaDatabase,
