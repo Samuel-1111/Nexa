@@ -487,4 +487,3 @@ class LocalCalendarEventRepository(private val database: NexaDatabase) : Calenda
     }
 }
 
-}
