@@ -76,7 +76,7 @@ class LocalTaskRepository(private val database: NexaDatabase) : TaskRepository {
             database.outboxDao().upsert(OutboxOperationEntity(EntityId.new().value, "TASK", id.value, "UPSERT", existing.serverVersion, "{\"id\":\"" + id.value + "\"}", "PENDING", 0, null, null, now, now))
         }
         return Task(id, title, priority = priority, dueAt = dueAt, status = TaskStatus.valueOf(updated.status), completedAt = updated.completedAtEpochMs?.let(Instant::ofEpochMilli))
-    }}
+    }
 
 class LocalReminderRepository(
     private val database: NexaDatabase,
